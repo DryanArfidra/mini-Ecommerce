@@ -1,10 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   SafeAreaView,
   View,
   Text,
-  StatusBar,
-  Platform,
   FlatList,
   TouchableOpacity,
   useWindowDimensions,
@@ -22,7 +20,7 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const { width } = useWindowDimensions();
 
-  const numColumns = useMemo(() => (width > 700 ? 2 : 1), [width]);
+  const numColumns = width > 700 ? 2 : 1;
 
   const handleAddProduct = (p: Omit<Product, "id">) => {
     const newProduct: Product = { ...p, id: String(Date.now()) };
@@ -30,13 +28,8 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[
-        styles.safeArea,
-        { paddingTop: Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 0 },
-      ]}
-    >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.container, { paddingTop: insets.top + 4 }]}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Mini E-Commerce</Text>
@@ -47,6 +40,7 @@ export default function HomeScreen() {
 
         {/* Daftar Produk */}
         <FlatList
+          key={numColumns}
           data={products}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ProductCard product={item} />}

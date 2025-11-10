@@ -1,12 +1,11 @@
-// App.tsx
 import React from "react";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import HomeScreen from "./src/screens/HomeScreen";
+import { NavigationContainer } from "@react-navigation/native";
+import StackNavigation from "./src/navigation/StackNavigation";
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <HomeScreen />
-    </SafeAreaProvider>
+    <NavigationContainer>
+      <StackNavigation />
+    </NavigationContainer>
   );
 }
