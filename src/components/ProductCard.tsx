@@ -1,40 +1,65 @@
-import React from "react";
-import { View, Text, Image, StyleSheet, Dimensions } from "react-native";
-import { Product } from "../types/product";
+import React from 'react';
+import { View, Text, Image, StyleSheet, Dimensions } from 'react-native';
+import { Product } from '../types';
 
-const screenWidth = Dimensions.get("window").width;
+interface ProductCardProps {
+  product: Product;
+}
 
-export default function ProductCard({ product }: { product: Product }) {
-  const isWide = screenWidth > 700;
-  const cardWidth = isWide ? (screenWidth - 48) / 2 : screenWidth - 24;
-
+const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
-    <View style={[styles.card, { width: cardWidth }]}>
-      <Image source={{ uri: product.imageUrl }} style={styles.image} resizeMode="cover" />
-      <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
-        <Text style={styles.price}>Rp {product.price.toFixed(2)}</Text>
-        {product.description && <Text style={styles.desc} numberOfLines={2}>{product.description}</Text>}
+    <View style={styles.card}>
+      <Image source={{ uri: product.imageUrl }} style={styles.image} />
+      <View style={styles.infoContainer}>
+        <Text style={styles.name}>{product.name}</Text>
+        <Text style={styles.price}>
+          Rp {product.price.toLocaleString('id-ID')}
+        </Text>
+        <Text style={styles.description} numberOfLines={2}>
+          {product.description}
+        </Text>
       </View>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    // Margin diubah agar pas di grid
+    margin: 8,
+    // Lebar dibuat fleksibel, hampir setengah layar
+    width: Dimensions.get('window').width / 2 - 20, 
+    overflow: 'hidden',
     elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
   },
-  image: { width: "100%", height: 160 },
-  content: { padding: 10 },
-  name: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
-  price: { fontSize: 14, fontWeight: "600", color: "#1f6feb", marginBottom: 6 },
-  desc: { fontSize: 13, color: "#333" },
+  image: {
+    width: '100%',
+    height: 150,
+  },
+  infoContainer: {
+    padding: 12,
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  price: {
+    fontSize: 14,
+    color: '#e74c3c',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  description: {
+    fontSize: 12,
+    color: '#7f8c8d',
+  },
 });
+
+export default ProductCard;
