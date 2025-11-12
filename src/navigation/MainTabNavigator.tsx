@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import ProductListScreen from '../screens/ProductListScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
-const Tab = createBottomTabNavigator();
+const Tab: any = createBottomTabNavigator();
 
 const MainTabNavigator = () => {
   return (

@@ -1,26 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import OnboardingStack from './OnboardingStack';
-import MainTabNavigator from './MainTabNavigator';
+import React from 'react';
+import DrawerNavigator from './DrawerNavigator';
 
 const AppNavigator = () => {
-  const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
-
-  // Di aplikasi nyata, Anda akan menyimpan status ini di AsyncStorage
-  // useEffect(() => {
-  //   const checkOnboardingStatus = async () => {
-  //     const status = await AsyncStorage.getItem('isOnboardingComplete');
-  //     if (status === 'true') {
-  //       setIsOnboardingComplete(true);
-  //     }
-  //   };
-  //   checkOnboardingStatus();
-  // }, []);
-
-  if (isOnboardingComplete) {
-    return <MainTabNavigator />;
-  }
-
-  return <OnboardingStack onComplete={() => setIsOnboardingComplete(true)} />;
+  return <DrawerNavigator />;
 };
 
 export default AppNavigator;

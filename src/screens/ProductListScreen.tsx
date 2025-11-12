@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SafeAreaView, View, FlatList, StyleSheet, Button, Text, Dimensions } from 'react-native';
 import ProductCard from '../components/ProductCard';
 import AddProductModal from '../components/AddProductModal';
-import { Product } from '../types';
+import { Product } from '../types/types';
 import { initialProducts } from '../data/initialProducts';
 
 const { width } = Dimensions.get('window'); // Dapatkan lebar layar

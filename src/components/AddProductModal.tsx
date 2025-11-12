@@ -9,7 +9,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { Product } from '../types';
+import { Product } from '../types/types';
 
 interface AddProductModalProps {
   visible: boolean;

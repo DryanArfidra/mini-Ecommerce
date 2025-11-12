@@ -1,14 +1,16 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, Dimensions } from 'react-native';
-import { Product } from '../types';
-
+import { View, Text, Image, StyleSheet, Dimensions } from 'react-native'; // Impor Dimensions
+import { Product } from '../types/types';
 interface ProductCardProps {
   product: Product;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  // Ambil lebar layar sekali saja
+  const screenWidth = Dimensions.get('window').width;
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { width: screenWidth / 2 - 12 }]}>
       <Image source={{ uri: product.imageUrl }} style={styles.image} />
       <View style={styles.infoContainer}>
         <Text style={styles.name}>{product.name}</Text>
@@ -27,10 +29,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: 'white',
     borderRadius: 8,
-    // Margin diubah agar pas di grid
-    margin: 8,
-    // Lebar dibuat fleksibel, hampir setengah layar
-    width: Dimensions.get('window').width / 2 - 20, 
+    // Margin dihapus, karena jarak sudah diatur oleh columnWrapperStyle di FlatList
+    marginVertical: 4,
     overflow: 'hidden',
     elevation: 3,
     shadowColor: '#000',
