@@ -41,8 +41,8 @@ const MainTabNavigator: React.FC = () => {
             borderTopWidth: 1,
             borderTopColor: '#f0f0f0',
             height: 70,
-            paddingBottom: 10,
-            paddingTop: 6,
+            paddingBottom: 8,
+            paddingTop: 8,
           },
         }}
       >

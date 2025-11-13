@@ -6,19 +6,69 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Alert,
 } from 'react-native';
+import { useDrawerLock } from '../navigation/DrawerNavigator';
+import { useNavigation } from '@react-navigation/native';
 
-interface SettingsScreenProps {
-  navigation: any;
-}
-
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
+const SettingsScreen: React.FC = () => {
+  const { drawerLocked, setDrawerLocked } = useDrawerLock();
+  const navigation = useNavigation();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
-  const [autoUpdate, setAutoUpdate] = useState(true);
+
+  const handleUnlockDrawer = () => {
+    setDrawerLocked(false);
+    Alert.alert('Berhasil', 'Swipe gesture drawer telah diaktifkan');
+  };
+
+  const handleLockDrawer = () => {
+    setDrawerLocked(true);
+    Alert.alert('Berhasil', 'Swipe gesture drawer telah dinonaktifkan');
+  };
+
+  const handleNavigateHome = () => {
+    navigation.navigate('MainTabs' as never);
+    // Tutup drawer secara programatik
+    navigation.dispatch({ type: 'CLOSE_DRAWER' } as never);
+  };
 
   return (
     <ScrollView style={styles.container}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Navigasi Drawer</Text>
+        
+        <View style={styles.settingItem}>
+          <View style={styles.settingInfo}>
+            <Text style={styles.settingTitle}>Swipe Gesture Drawer</Text>
+            <Text style={styles.settingDescription}>
+              {drawerLocked ? 'Swipe gesture dinonaktifkan' : 'Swipe gesture diaktifkan'}
+            </Text>
+          </View>
+          <Switch
+            value={!drawerLocked}
+            onValueChange={(value) => setDrawerLocked(!value)}
+            trackColor={{ false: '#767577', true: '#81b0ff' }}
+            thumbColor={!drawerLocked ? '#2196F3' : '#f4f3f4'}
+          />
+        </View>
+
+        <TouchableOpacity style={styles.actionButton} onPress={handleUnlockDrawer}>
+          <Text style={styles.actionButtonText}>Aktifkan Swipe Gesture</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={handleLockDrawer}>
+          <Text style={styles.actionButtonText}>Nonaktifkan Swipe Gesture</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.homeButton]} 
+          onPress={handleNavigateHome}
+        >
+          <Text style={styles.homeButtonText}>⬅ Kembali ke Home & Tutup Drawer</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Pengaturan Umum</Text>
         
@@ -51,56 +101,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             thumbColor={darkMode ? '#2196F3' : '#f4f3f4'}
           />
         </View>
-
-        <View style={styles.settingItem}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.settingTitle}>Update Otomatis</Text>
-            <Text style={styles.settingDescription}>
-              Update aplikasi secara otomatis
-            </Text>
-          </View>
-          <Switch
-            value={autoUpdate}
-            onValueChange={setAutoUpdate}
-            trackColor={{ false: '#767577', true: '#81b0ff' }}
-            thumbColor={autoUpdate ? '#2196F3' : '#f4f3f4'}
-          />
-        </View>
       </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Bahasa & Region</Text>
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuText}>Bahasa</Text>
-          <Text style={styles.menuValue}>Indonesia</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuText}>Mata Uang</Text>
-          <Text style={styles.menuValue}>IDR</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuText}>Region</Text>
-          <Text style={styles.menuValue}>Indonesia</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Tentang</Text>
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuText}>Versi Aplikasi</Text>
-          <Text style={styles.menuValue}>1.0.0</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuText}>Ketentuan Layanan</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuText}>Kebijakan Privasi</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={styles.logoutButton}>
-        <Text style={styles.logoutText}>Keluar Akun</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -143,29 +144,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  menuItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  menuText: {
-    fontSize: 16,
-  },
-  menuValue: {
-    fontSize: 16,
-    color: '#666',
-  },
-  logoutButton: {
-    backgroundColor: '#f44336',
-    margin: 15,
+  actionButton: {
+    backgroundColor: '#2196F3',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+    marginVertical: 5,
   },
-  logoutText: {
+  actionButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  homeButton: {
+    backgroundColor: '#4CAF50',
+    marginTop: 10,
+  },
+  homeButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',

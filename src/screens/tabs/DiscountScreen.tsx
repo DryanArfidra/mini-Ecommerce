@@ -1,21 +1,33 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
 } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import ProductCard from '../../components/ProductCard';
 import { initialProducts, Product } from '../../data/initialProducts';
 
 const DiscountScreen: React.FC = () => {
-  const discountProducts = initialProducts.filter(
-    product => product.discount && product.discount > 0
-  );
+  const isFocused = useIsFocused();
+  const discountProducts = initialProducts.filter(product => product.discount);
 
   const handleProductPress = (product: Product) => {
     console.log('Discount product pressed:', product.name);
   };
+
+  // Lazy loading effect
+  useEffect(() => {
+    if (isFocused) {
+      console.log('🔄 Tab Diskon: DIFOKUS - Memuat konten...');
+      
+      // Simulate data loading
+      return () => {
+        console.log('🧹 Tab Diskon: DITINGGALKAN - Membersihkan...');
+      };
+    }
+  }, [isFocused]);
 
   if (discountProducts.length === 0) {
     return (
