@@ -1,40 +1,45 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  SafeAreaView,
+} from 'react-native';
 import ProductCard from '../../components/ProductCard';
-import { initialProducts } from '../../data/initialProducts';
-import { Product } from '../../types/types';
+import { initialProducts, Product } from '../../data/initialProducts';
 
-const PopularScreen = () => {
-  const popularProducts = initialProducts.filter((product: Product) => product.isPopular);
+const PopularScreen: React.FC = () => {
+  const popularProducts = initialProducts.filter(product => product.isPopular);
+
+  const handleProductPress = (product: Product) => {
+    console.log('Popular product pressed:', product.name);
+  };
 
   return (
-    // PASTIKAN VIEW UTAMA MEMILIKI STYLE INI
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={popularProducts}
-        renderItem={({ item }) => <ProductCard product={item} />}
+        renderItem={({ item }) => (
+          <ProductCard product={item} onPress={handleProductPress} />
+        )}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.list}
-        // Tambahkan prop ini untuk mencegah 'bouncing' di iOS
-        bounces={false} 
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
-// PASTIKAN STYLE INI ADA DAN BENAR
 const styles = StyleSheet.create({
   container: {
-    flex: 1,        // <-- INI ADALAH KUNCI UTAMANYA
-    backgroundColor: '#f0f2f5',
+    flex: 1,
+    backgroundColor: '#f5f5f5',
   },
-  list: {
-    padding: 8,     // Padding untuk seluruh list
-  },
-  row: {
-    justifyContent: 'space-between', // Jarak antar kolom
+  listContent: {
+    padding: 8,
+    paddingBottom: 20, // Extra padding untuk bottom tab
   },
 });
 

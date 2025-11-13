@@ -1,29 +1,66 @@
 import React from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  SafeAreaView,
+  StatusBar
+} from 'react-native';
 import ProductCard from '../../components/ProductCard';
-import { initialProducts } from '../../data/initialProducts';
+import { initialProducts, Product } from '../../data/initialProducts';
 
-const BabyGearScreen = () => {
-  const babyGearProducts = initialProducts.filter(p => p.category === 'Perlengkapan Bayi');
+const BabyGearScreen: React.FC = () => {
+  const babyGearProducts = initialProducts.filter(
+    product => product.category === 'Baby Gear'
+  );
+
+  const handleProductPress = (product: Product) => {
+    console.log('Baby gear product pressed:', product.name);
+  };
+
+  if (babyGearProducts.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+         <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
+        <Text style={styles.emptyText}>Tidak ada produk baby gear</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={babyGearProducts}
-        renderItem={({ item }) => <ProductCard product={item} />}
+        renderItem={({ item }) => (
+          <ProductCard product={item} onPress={handleProductPress} />
+        )}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f0f2f5' },
-  list: { padding: 8 },
-  row: { justifyContent: 'space-between' },
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  listContent: {
+    padding: 8,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+  },
 });
 
 export default BabyGearScreen;

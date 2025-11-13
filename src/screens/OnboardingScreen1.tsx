@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
 
 interface OnboardingScreen1Props {
   navigation: any;
@@ -8,14 +14,23 @@ interface OnboardingScreen1Props {
 const OnboardingScreen1: React.FC<OnboardingScreen1Props> = ({ navigation }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🛍️ Selamat Datang di Mini E-Commerce!</Text>
-      <Text style={styles.subtitle}>
-        Temukan berbagai produk menarik dengan mudah dan cepat.
+      <Image
+        source={{ uri: 'https://img.freepik.com/vektor-premium/neon-sign-selamat-berbelanja-dengan-latar-belakang-dinding-bata-vektor_1182830-126.jpg' }}
+        style={styles.image}
+      />
+      <Text style={styles.title}>Selamat Datang</Text>
+      <Text style={styles.description}>
+        Temukan berbagai produk terbaik dengan harga menarik
       </Text>
-      <View style={styles.buttonContainer}>
-        <Button title="Lewati" onPress={() => navigation.replace('MainApp')} />
-        <Button title="Lanjut" onPress={() => navigation.navigate('Onboarding2')} />
-      </View>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('Onboarding2')}
+      >
+        <Text style={styles.buttonText}>Lanjut</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+        <Text style={styles.skipText}>Lewati</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -26,24 +41,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: 'white',
+  },
+  image: {
+    width: 300,
+    height: 300,
+    marginBottom: 40,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    marginBottom: 20,
     textAlign: 'center',
-    marginBottom: 10,
-    marginTop: 80,
   },
-  subtitle: {
+  description: {
     fontSize: 16,
     textAlign: 'center',
-    color: 'gray',
     marginBottom: 40,
+    color: '#666',
+    lineHeight: 24,
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
+  button: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 25,
+    marginBottom: 20,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  skipText: {
+    color: '#666',
+    fontSize: 14,
   },
 });
 

@@ -1,21 +1,31 @@
 import React from 'react';
-import CustomDrawerContent from '../components/CustomDrawerContent';
-import HomeScreen from '../screens/HomeScreen';
-import SettingsScreen from '../screens/SettingsScreen';
 import { createDrawerNavigator } from '@react-navigation/drawer';
+import CustomDrawerContent from '../components/CustomDrawerContent';
+import MainTabNavigator from './MainTabNavigator';
+import ProfileScreen from '../screens/ProfileScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
-const Drawer: any = createDrawerNavigator();
+export type DrawerParamList = {
+  MainTabs: undefined;
+  Profile: undefined;
+  Settings: undefined;
+};
 
-const DrawerNavigator = () => {
+const Drawer = createDrawerNavigator<DrawerParamList>();
+
+const DrawerNavigator: React.FC = () => {
   return (
     <Drawer.Navigator
-      // drawerContent={(props) => <CustomDrawerContent {...props} />}
+      drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
-        // swipeEnabled: false,
         headerShown: false,
+        drawerStyle: {
+          width: '80%',
+        },
       }}
     >
-      <Drawer.Screen name="Home" component={HomeScreen} />
+      <Drawer.Screen name="MainTabs" component={MainTabNavigator} />
+      <Drawer.Screen name="Profile" component={ProfileScreen} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
     </Drawer.Navigator>
   );

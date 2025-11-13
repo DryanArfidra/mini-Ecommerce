@@ -1,42 +1,63 @@
-import React, { useCallback } from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+} from 'react-native';
 import ProductCard from '../../components/ProductCard';
-import { initialProducts } from '../../data/initialProducts';
-import { Product } from '../../types/types';
-import { useFocusEffect } from '@react-navigation/native';
+import { initialProducts, Product } from '../../data/initialProducts';
 
-const DiscountScreen = () => {
-  // Filter produk yang memiliki diskon
-  const discountProducts = initialProducts.filter((product: Product) => product.discountPercentage > 0);
-
-  // Bukti lazy loading dan focus effect
-  useFocusEffect(
-    useCallback(() => {
-      console.log('TAB DISKON: Sedang aktif/focus.');
-      return () => {
-        console.log('TAB DISKON: Sudah tidak aktif/blur.');
-      };
-    }, [])
+const DiscountScreen: React.FC = () => {
+  const discountProducts = initialProducts.filter(
+    product => product.discount && product.discount > 0
   );
+
+  const handleProductPress = (product: Product) => {
+    console.log('Discount product pressed:', product.name);
+  };
+
+  if (discountProducts.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Tidak ada produk diskon</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <FlatList
         data={discountProducts}
-        renderItem={({ item }) => <ProductCard product={item} />}
+        renderItem={({ item }) => (
+          <ProductCard product={item} onPress={handleProductPress} />
+        )}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f0f2f5' },
-  list: { padding: 8 },
-  row: { justifyContent: 'space-between' },
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  listContent: {
+    padding: 8,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+  },
 });
 
 export default DiscountScreen;

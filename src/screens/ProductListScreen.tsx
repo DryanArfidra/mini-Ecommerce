@@ -1,41 +1,57 @@
 import React, { useState } from 'react';
-import { SafeAreaView, View, FlatList, StyleSheet, Button, Text, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  SafeAreaView,
+} from 'react-native';
 import ProductCard from '../components/ProductCard';
-import AddProductModal from '../components/AddProductModal';
-import { Product } from '../types/types';
-import { initialProducts } from '../data/initialProducts';
+import { initialProducts, Product } from '../data/initialProducts';
 
-const { width } = Dimensions.get('window'); // Dapatkan lebar layar
+interface ProductListScreenProps {
+  navigation: any;
+}
 
-const ProductListScreen: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [isModalVisible, setModalVisible] = useState(false);
+const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation }) => {
+  const [products] = useState<Product[]>(initialProducts);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const handleAddProduct = (newProduct: Product) => {
-    setProducts([...products, newProduct]);
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleProductPress = (product: Product) => {
+    console.log('Product pressed:', product.name);
   };
+
+  // Product Card untuk grid 2 kolom
+  const renderProductCard = ({ item }: { item: Product }) => (
+    <View style={styles.productCardWrapper}>
+      <ProductCard product={item} onPress={handleProductPress} />
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mini E-Commerce</Text>
-        <Button
-          title="Tambah Produk"
-          onPress={() => setModalVisible(true)}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Cari produk..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
         />
       </View>
+
       <FlatList
-        data={products}
-        numColumns={2} // Buat 2 kolom
-        renderItem={({ item }) => <ProductCard product={item} />}
+        data={filteredProducts}
+        renderItem={renderProductCard}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        columnWrapperStyle={styles.row} // Style untuk baris
-      />
-      <AddProductModal
-        visible={isModalVisible}
-        onClose={() => setModalVisible(false)}
-        onAddProduct={handleAddProduct}
+        numColumns={2} // ← 2 KOLOM
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
   );
@@ -44,26 +60,29 @@ const ProductListScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f2f5',
+    backgroundColor: '#edebebff',
   },
-  header: {
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+  searchContainer: {
+    padding: 15,
+    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: '#e1d4d4ff',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  searchInput: {
+    backgroundColor: '#f6ebebff',
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#efeaeaff',
   },
-  list: {
-    padding: 8,
+  listContent: {
+    padding: 6,
+    paddingBottom: 20,
   },
-  row: {
-    justifyContent: 'space-between', // Jarak antar kolom
+  productCardWrapper: {
+    width: '50%', // ← 2 kolom
+    padding: 3,
   },
 });
 

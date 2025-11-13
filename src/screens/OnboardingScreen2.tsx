@@ -1,27 +1,36 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
 
 interface OnboardingScreen2Props {
   navigation: any;
-  onComplete: () => void;
 }
 
-const OnboardingScreen2: React.FC<OnboardingScreen2Props> = ({ navigation, onComplete }) => {
-  const handleGetStarted = () => {
-    onComplete();
-    navigation.replace('MainApp');
-  };
-
+const OnboardingScreen2: React.FC<OnboardingScreen2Props> = ({ navigation }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🚀 Mulai Berbelanja Sekarang!</Text>
-      <Text style={styles.subtitle}>
-        Dapatkan penawaran terbaik dan tambahkan produk favorit Anda ke daftar.
+      <Image
+        source={{ uri: 'https://img.freepik.com/premium-vector/online-shopping-concept-e-commerce-flat-set-with-man-store-shopping-cart-vector_939213-1312.jpg?semt=ais_hybrid&w=740&q=80' }}
+        style={styles.image}
+      />
+      <Text style={styles.title}>Belanja Mudah</Text>
+      <Text style={styles.description}>
+        Proses belanja yang cepat dan aman dengan berbagai metode pembayaran
       </Text>
-      <View style={styles.buttonContainer}>
-        <Button title="Lewati" onPress={() => navigation.replace('MainApp')} />
-        <Button title="Mulai" onPress={handleGetStarted} />
-      </View>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('Main')}
+      >
+        <Text style={styles.buttonText}>Mulai Belanja</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.goBack()}>
+        <Text style={styles.backText}>Kembali</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -32,24 +41,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: 'white',
+  },
+  image: {
+    width: 300,
+    height: 300,
+    marginBottom: 40,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    marginBottom: 20,
     textAlign: 'center',
-    marginBottom: 10,
-    marginTop: 80,
   },
-  subtitle: {
+  description: {
     fontSize: 16,
     textAlign: 'center',
-    color: 'gray',
     marginBottom: 40,
+    color: '#666',
+    lineHeight: 24,
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
+  button: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 25,
+    marginBottom: 20,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  backText: {
+    color: '#666',
+    fontSize: 14,
   },
 });
 
