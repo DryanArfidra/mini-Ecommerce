@@ -1,7 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text } from 'react-native'; // Import Text dari react-native
-import HomeTabsNavigator from './HomeTabsNavigator';
+import { Text, TouchableOpacity } from 'react-native';
+import HomeTabsNavigator from './HomeTabsNavigator'; // Level 4
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 
 export type HomeStackParamList = {
@@ -27,12 +27,20 @@ const HomeStackNavigator: React.FC = () => {
       <Stack.Screen 
         name="HomeTabs" 
         component={HomeTabsNavigator}
-        options={{
+        options={({ navigation }: any) => ({
           title: 'Mini E-Commerce',
-          headerRight: () => (
-            <Text style={{ color: 'white', marginRight: 15 }}>🏠</Text>
+          headerLeft: () => (
+            <TouchableOpacity 
+              onPress={() => navigation.openDrawer()}
+              style={{ marginLeft: 15 }}
+            >
+              <Text style={{ color: 'white', fontSize: 20 }}>☰</Text>
+            </TouchableOpacity>
           ),
-        }}
+          headerRight: () => (
+            <Text style={{ color: 'white', marginRight: 15, fontSize: 20 }}>🏠</Text>
+          ),
+        })}
       />
       <Stack.Screen 
         name="ProductDetail" 

@@ -6,28 +6,40 @@ import {
   FlatList,
   SafeAreaView,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ProductCard from '../../components/ProductCard';
 import { initialProducts, Product } from '../../data/initialProducts';
+import { HomeStackParamList } from '../../navigation/HomeStackNavigator';
+
+type NavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
 const PopularScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   const popularProducts = initialProducts.filter(product => product.isPopular);
 
   const handleProductPress = (product: Product) => {
-    console.log('Popular product pressed:', product.name);
+    navigation.navigate('ProductDetail', { productId: product.id });
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList
-        data={popularProducts}
-        renderItem={({ item }) => (
-          <ProductCard product={item} onPress={handleProductPress} />
-        )}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {popularProducts.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Tidak ada produk populer</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={popularProducts}
+          renderItem={({ item }) => (
+            <ProductCard product={item} onPress={handleProductPress} />
+          )}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -39,7 +51,16 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 8,
-    paddingBottom: 20, // Extra padding untuk bottom tab
+    paddingBottom: 20,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
   },
 });
 

@@ -24,7 +24,7 @@ const ProductDetailScreen: React.FC = () => {
 
   const product = initialProducts.find(p => p.id === productId);
 
-  // Function untuk Reset Stack
+  // ✅ SOAL 3: RESET STACK & TUTUP DRAWER
   const handleResetStack = () => {
     // Reset Stack Navigator ke HomeTabs
     navigation.reset({
@@ -32,17 +32,23 @@ const ProductDetailScreen: React.FC = () => {
       routes: [{ name: 'HomeTabs' }],
     });
 
-    Alert.alert('Berhasil', 'Stack telah direset ke Home');
+    // Tutup drawer secara programatik
+    const drawerNavigation = navigation.getParent() as any;
+    if (drawerNavigation && drawerNavigation.closeDrawer) {
+      drawerNavigation.closeDrawer();
+    }
+
+    Alert.alert('Berhasil', 'Stack telah direset ke Home dan Drawer ditutup');
   };
 
-  // Function untuk Back to Drawer Home
+  // ✅ SOAL 4: KEMBALI KE DRAWER HOME
   const handleBackToDrawerHome = () => {
     // Dapatkan parent navigator (Drawer)
     const parent = navigation.getParent();
     
     if (parent) {
       // Explicitly go back in parent navigator
-      parent.goBack();
+      (parent as any).goBack();
       Alert.alert('Info', 'Navigasi kembali ke Drawer Home');
     } else {
       Alert.alert('Info', 'Tidak ada parent navigator');
@@ -87,7 +93,7 @@ const ProductDetailScreen: React.FC = () => {
           )}
         </View>
 
-        {/* Tombol Aksi */}
+        {/* ✅ SOAL 3: TOMBOL RESET STACK */}
         <TouchableOpacity 
           style={[styles.actionButton, styles.resetButton]}
           onPress={handleResetStack}
@@ -95,6 +101,7 @@ const ProductDetailScreen: React.FC = () => {
           <Text style={styles.actionButtonText}>🔄 Reset Stack ke Home</Text>
         </TouchableOpacity>
 
+        {/* ✅ SOAL 4: TOMBOL KEMBALI KE DRAWER HOME */}
         <TouchableOpacity 
           style={[styles.actionButton, styles.backButton]}
           onPress={handleBackToDrawerHome}

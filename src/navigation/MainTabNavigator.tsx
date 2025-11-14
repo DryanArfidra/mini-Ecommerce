@@ -1,8 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text } from 'react-native'; // Import dari react-native
-import HomeStackNavigator from './HomeStackNavigator';
+import { View, Text } from 'react-native';
+import HomeStackNavigator from './HomeStackNavigator'; // Level 3
 import ProductListScreen from '../screens/ProductListScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
@@ -31,7 +31,6 @@ const TabIcon = ({ focused, icon, label }: { focused: boolean; icon: string; lab
 
 const MainTabNavigator: React.FC = () => {
   return (
-    // HAPUS edges property - tidak compatible dengan versi lama
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
       <Tab.Navigator
         screenOptions={{
@@ -42,7 +41,7 @@ const MainTabNavigator: React.FC = () => {
             borderTopColor: '#f0f0f0',
             height: 60,
             paddingBottom: 8,
-            paddingTop: 4,
+            paddingTop: 10,
           },
         }}
       >

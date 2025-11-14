@@ -14,9 +14,9 @@ import {
 
 const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
   const user = {
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    avatar: 'https://via.placeholder.com/100/2196F3/FFFFFF?text=JD',
+    name: 'Dryan Arfidra',
+    email: 'Arfidra@example.com',
+    avatar: 'https://static.vecteezy.com/system/resources/thumbnails/032/176/191/small/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg',
   };
 
   return (
@@ -36,7 +36,7 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
       >
         {/* Menu Items */}
         <DrawerItem
-          label="Home"
+          label="Beranda"
           onPress={() => props.navigation.navigate('MainTabs')}
           labelStyle={styles.drawerLabel}
           icon={({ color, size }) => (
@@ -44,7 +44,15 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
           )}
         />
         <DrawerItem
-          label="Settings"
+          label="Profil"
+          onPress={() => props.navigation.navigate('Profile')}
+          labelStyle={styles.drawerLabel}
+          icon={({ color, size }) => (
+            <Text style={[styles.icon, { color }]}>👤</Text>
+          )}
+        />
+        <DrawerItem
+          label="Pengaturan"
           onPress={() => props.navigation.navigate('Settings')}
           labelStyle={styles.drawerLabel}
           icon={({ color, size }) => (
@@ -64,6 +72,7 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
   );
 };
 
+// STYLE TETAP SAMA
 const styles = StyleSheet.create({
   container: {
     flex: 1,

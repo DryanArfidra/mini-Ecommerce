@@ -19,19 +19,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => {
     if (onPress) {
       onPress(product);
     } else {
-      // Default behavior: Navigate to Product Detail
+      // ✅ NAVIGASI KE STACK DETAIL - TOP TABS AKAN HILANG OTOMATIS
       navigation.navigate('ProductDetail', { productId: product.id });
     }
   };
 
-  // ... rest of the component remains the same
   const discountedPrice = product.discount 
     ? product.price - (product.price * product.discount / 100)
     : product.price;
 
   return (
     <TouchableOpacity style={styles.card} onPress={handlePress}>
-      {/* ... existing card content ... */}
       <View style={styles.imageContainer}>
         <Image source={{ uri: product.image }} style={styles.image} />
         <View style={styles.badgeContainer}>
@@ -60,7 +58,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => {
   );
 };
 
-// ... styles remain the same
+// Styles tetap sama...
 const styles = StyleSheet.create({
   card: {
     backgroundColor: 'white',

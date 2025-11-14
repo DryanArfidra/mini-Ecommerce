@@ -4,52 +4,60 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  SafeAreaView,
 } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ProductCard from '../../components/ProductCard';
 import { initialProducts, Product } from '../../data/initialProducts';
+import { HomeStackParamList } from '../../navigation/HomeStackNavigator';
+
+type NavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
 const DiscountScreen: React.FC = () => {
-  const isFocused = useIsFocused();
-  const discountProducts = initialProducts.filter(product => product.discount);
+  const navigation = useNavigation<NavigationProp>();
+  const isFocused = useIsFocused(); // ✅ DETEKSI FOCUS TAB
+  
+  const discountProducts = initialProducts.filter(product => 
+    product.discount && product.discount > 0
+  );
 
   const handleProductPress = (product: Product) => {
-    console.log('Discount product pressed:', product.name);
+    navigation.navigate('ProductDetail', { productId: product.id });
   };
 
-  // Lazy loading effect
+  // ✅ OPTIMASI: LAZY LOADING DENGAN FOCUS EFFECT
   useEffect(() => {
     if (isFocused) {
-      console.log('🔄 Tab Diskon: DIFOKUS - Memuat konten...');
-      
-      // Simulate data loading
-      return () => {
-        console.log('🧹 Tab Diskon: DITINGGALKAN - Membersihkan...');
-      };
+      console.log('🔄 Tab Diskon: DI-LOAD (sedang aktif)');
+      // Lakukan preload data atau operasi lainnya di sini
     }
+
+    return () => {
+      console.log('🧹 Tab Diskon: DI-BERSIHKAN (tidak aktif)');
+      // Cleanup effect ketika tab tidak aktif
+    };
   }, [isFocused]);
 
-  if (discountProducts.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Tidak ada produk diskon</Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={discountProducts}
-        renderItem={({ item }) => (
-          <ProductCard product={item} onPress={handleProductPress} />
-        )}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+    <SafeAreaView style={styles.container}>
+      {discountProducts.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Tidak ada produk diskon</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={discountProducts}
+          renderItem={({ item }) => (
+            <ProductCard product={item} onPress={handleProductPress} />
+          )}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+    </SafeAreaView>
   );
 };
 
@@ -60,6 +68,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 8,
+    paddingBottom: 20,
   },
   emptyContainer: {
     flex: 1,

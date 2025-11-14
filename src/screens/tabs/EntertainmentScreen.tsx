@@ -3,41 +3,17 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  SafeAreaView,
 } from 'react-native';
-import ProductCard from '../../components/ProductCard';
-import { initialProducts, Product } from '../../data/initialProducts';
 
 const EntertainmentScreen: React.FC = () => {
-  const entertainmentProducts = initialProducts.filter(
-    product => product.category === 'Entertainment'
-  );
-
-  const handleProductPress = (product: Product) => {
-    console.log('Entertainment product pressed:', product.name);
-  };
-
-  if (entertainmentProducts.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Tidak ada produk entertainment</Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={entertainmentProducts}
-        renderItem={({ item }) => (
-          <ProductCard product={item} onPress={handleProductPress} />
-        )}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Tidak ada produk hiburan</Text>
+        <Text style={styles.comingSoon}>Coming Soon</Text>
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -45,9 +21,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-  },
-  listContent: {
-    padding: 8,
   },
   emptyContainer: {
     flex: 1,
@@ -57,6 +30,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#666',
+    marginBottom: 8,
+  },
+  comingSoon: {
+    fontSize: 14,
+    color: '#999',
   },
 });
 

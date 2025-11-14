@@ -1,34 +1,65 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (token: string) => void;
+  isOnboardingCompleted: boolean;
+  user: User | null;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  authToken: string | null;
+  completeOnboarding: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(true); // Default true untuk skip onboarding
+  const [user, setUser] = useState<User | null>(null);
 
-  const login = (token: string) => {
-    setAuthToken(token);
-    setIsAuthenticated(true);
+  const login = async (email: string, password: string): Promise<boolean> => {
+    // Simulasi login process
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        if (email && password) {
+          const userData: User = {
+            id: '1',
+            name: 'Dryan Arfidra',
+            email: email,
+            avatar: 'https://static.vecteezy.com/system/resources/thumbnails/032/176/191/small/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg'
+          };
+          setUser(userData);
+          setIsAuthenticated(true);
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      }, 1000);
+    });
   };
 
   const logout = () => {
-    setAuthToken(null);
+    setUser(null);
     setIsAuthenticated(false);
   };
 
+  const completeOnboarding = () => setIsOnboardingCompleted(true);
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, authToken }}>
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      isOnboardingCompleted,
+      user,
+      login,
+      logout,
+      completeOnboarding,
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,5 @@
 import React from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import PopularScreen from '../screens/tabs/PopularScreen';
 import NewestScreen from '../screens/tabs/NewestScreen';
 import DiscountScreen from '../screens/tabs/DiscountScreen';
@@ -18,7 +17,6 @@ export type HomeTabsParamList = {
   Pakaian: undefined;
   Makanan: undefined;
   Otomotif: undefined;
-  Hiburan: undefined;
   'Perlengkapan Bayi': undefined;
 };
 
@@ -38,18 +36,17 @@ const HomeTabsNavigator: React.FC = () => {
           fontWeight: '600',
           textTransform: 'none',
         },
-         tabBarStyle: { 
+        tabBarStyle: { 
           backgroundColor: 'white',
           elevation: 0,
           shadowOpacity: 0,
-          marginTop: 0, // Pastikan tempel di bawah header
         },
         tabBarIndicatorStyle: {
           backgroundColor: '#2196F3',
           height: 3,
         },
-        lazy: true,
-        lazyPreloadDistance: 1,
+        lazy: true, // ✅ LAZY LOADING
+        lazyPreloadDistance: 1, // ✅ PRELOAD TAB BERDEKATAN
       }}
     >
       <Tab.Screen name="Populer" component={PopularScreen} />

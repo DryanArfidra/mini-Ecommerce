@@ -8,14 +8,16 @@ import {
   TextInput,
   SafeAreaView,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ProductCard from '../components/ProductCard';
 import { initialProducts, Product } from '../data/initialProducts';
+import { HomeStackParamList } from '../navigation/HomeStackNavigator';
 
-interface ProductListScreenProps {
-  navigation: any;
-}
+type NavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
-const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation }) => {
+const ProductListScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   const [products] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -23,8 +25,10 @@ const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation }) => 
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // HAPUS handleProductPress yang lama, biarkan ProductCard handle sendiri
+  // Atau gunakan ini jika ingin custom behavior:
   const handleProductPress = (product: Product) => {
-    console.log('Product pressed:', product.name);
+    navigation.navigate('ProductDetail', { productId: product.id });
   };
 
   // Product Card untuk grid 2 kolom
@@ -49,7 +53,7 @@ const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation }) => 
         data={filteredProducts}
         renderItem={renderProductCard}
         keyExtractor={(item) => item.id}
-        numColumns={2} // ← 2 KOLOM
+        numColumns={2}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
@@ -57,6 +61,7 @@ const ProductListScreen: React.FC<ProductListScreenProps> = ({ navigation }) => 
   );
 };
 
+// Styles tetap sama...
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -81,7 +86,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   productCardWrapper: {
-    width: '50%', // ← 2 kolom
+    width: '50%',
     padding: 3,
   },
 });

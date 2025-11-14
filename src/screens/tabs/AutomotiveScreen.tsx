@@ -5,41 +5,43 @@ import {
   StyleSheet,
   FlatList,
   SafeAreaView,
-  StatusBar
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ProductCard from '../../components/ProductCard';
 import { initialProducts, Product } from '../../data/initialProducts';
+import { HomeStackParamList } from '../../navigation/HomeStackNavigator';
+
+type NavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
 const AutomotiveScreen: React.FC = () => {
-  const automotiveProducts = initialProducts.filter(
-    product => product.category === 'Automotive'
+  const navigation = useNavigation<NavigationProp>();
+  const automotiveProducts = initialProducts.filter(product => 
+    product.category === 'Automotive'
   );
 
   const handleProductPress = (product: Product) => {
-    console.log('Automotive product pressed:', product.name);
+    navigation.navigate('ProductDetail', { productId: product.id });
   };
-
-  if (automotiveProducts.length === 0) {
-    return (
-      <SafeAreaView style={styles.container}>
-         <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
-          <Text style={styles.emptyText}>Tidak ada produk automotive</Text>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList
-        data={automotiveProducts}
-        renderItem={({ item }) => (
-          <ProductCard product={item} onPress={handleProductPress} />
-        )}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {automotiveProducts.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Tidak ada produk otomotif</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={automotiveProducts}
+          renderItem={({ item }) => (
+            <ProductCard product={item} onPress={handleProductPress} />
+          )}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -51,6 +53,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 8,
+    paddingBottom: 20,
   },
   emptyContainer: {
     flex: 1,

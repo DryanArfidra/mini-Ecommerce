@@ -17,7 +17,7 @@ type DrawerLockContextType = {
 };
 
 export const DrawerLockContext = createContext<DrawerLockContextType>({
-  drawerLocked: true,
+  drawerLocked: false,
   setDrawerLocked: () => {},
 });
 
@@ -26,7 +26,7 @@ export const useDrawerLock = () => useContext(DrawerLockContext);
 const Drawer = createDrawerNavigator<DrawerParamList>();
 
 const DrawerNavigator: React.FC = () => {
-  const [drawerLocked, setDrawerLocked] = useState(true); // Default locked
+  const [drawerLocked, setDrawerLocked] = useState(false);
 
   return (
     <DrawerLockContext.Provider value={{ drawerLocked, setDrawerLocked }}>
@@ -37,7 +37,7 @@ const DrawerNavigator: React.FC = () => {
           drawerStyle: {
             width: '80%',
           },
-          swipeEnabled: !drawerLocked, // ← Kontrol swipe gesture
+          swipeEnabled: !drawerLocked,
         }}
       >
         <Drawer.Screen name="MainTabs" component={MainTabNavigator} />
