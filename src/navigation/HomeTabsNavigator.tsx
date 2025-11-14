@@ -1,5 +1,6 @@
 import React from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import PopularScreen from '../screens/tabs/PopularScreen';
 import NewestScreen from '../screens/tabs/NewestScreen';
 import DiscountScreen from '../screens/tabs/DiscountScreen';
@@ -27,7 +28,7 @@ const HomeTabsNavigator: React.FC = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarScrollEnabled: true, // ← Scroll horizontal
+        tabBarScrollEnabled: true,
         tabBarItemStyle: { 
           width: 'auto',
           paddingHorizontal: 12,
@@ -37,17 +38,15 @@ const HomeTabsNavigator: React.FC = () => {
           fontWeight: '600',
           textTransform: 'none',
         },
-        tabBarStyle: { 
+         tabBarStyle: { 
           backgroundColor: 'white',
           elevation: 0,
           shadowOpacity: 0,
+          marginTop: 0, // Pastikan tempel di bawah header
         },
         tabBarIndicatorStyle: {
           backgroundColor: '#2196F3',
           height: 3,
-        },
-        tabBarIndicatorContainerStyle: {
-          backgroundColor: 'white',
         },
         lazy: true,
         lazyPreloadDistance: 1,
@@ -60,7 +59,6 @@ const HomeTabsNavigator: React.FC = () => {
       <Tab.Screen name="Pakaian" component={FashionScreen} />
       <Tab.Screen name="Makanan" component={FoodScreen} />
       <Tab.Screen name="Otomotif" component={AutomotiveScreen} />
-      <Tab.Screen name="Hiburan" component={BabyGearScreen} />
       <Tab.Screen 
         name="Perlengkapan Bayi" 
         component={BabyGearScreen}

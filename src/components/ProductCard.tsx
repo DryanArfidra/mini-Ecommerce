@@ -1,19 +1,37 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { HomeStackParamList } from '../navigation/HomeStackNavigator';
 import { Product } from '../data/initialProducts';
 
 interface ProductCardProps {
   product: Product;
-  onPress: (product: Product) => void;
+  onPress?: (product: Product) => void;
 }
 
+type NavigationProp = NativeStackNavigationProp<HomeStackParamList>;
+
 const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => {
+  const navigation = useNavigation<NavigationProp>();
+
+  const handlePress = () => {
+    if (onPress) {
+      onPress(product);
+    } else {
+      // Default behavior: Navigate to Product Detail
+      navigation.navigate('ProductDetail', { productId: product.id });
+    }
+  };
+
+  // ... rest of the component remains the same
   const discountedPrice = product.discount 
     ? product.price - (product.price * product.discount / 100)
     : product.price;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={() => onPress(product)}>
+    <TouchableOpacity style={styles.card} onPress={handlePress}>
+      {/* ... existing card content ... */}
       <View style={styles.imageContainer}>
         <Image source={{ uri: product.image }} style={styles.image} />
         <View style={styles.badgeContainer}>
@@ -42,26 +60,26 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => {
   );
 };
 
+// ... styles remain the same
 const styles = StyleSheet.create({
   card: {
     backgroundColor: 'white',
     borderRadius: 12,
-    padding: 10,
-    margin: 3,
+    padding: 12,
+    margin: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
     flex: 1,
-    height: 210,
-    minWidth: 0,
-    overflow: 'hidden', // ← Pastikan konten tidak keluar
+    height: 220,
+    overflow: 'hidden',
   },
   imageContainer: {
     position: 'relative',
-    marginBottom: 8,
-    height: 110,
+    marginBottom: 10,
+    height: 120,
   },
   image: {
     width: '100%',
@@ -104,15 +122,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   name: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     marginBottom: 4,
     lineHeight: 18,
     color: '#1a1a1a',
-    flexShrink: 1, // ← Prevent text overflow
+    flexShrink: 1,
   },
   category: {
-    fontSize: 10,
+    fontSize: 12,
     color: '#666',
     marginBottom: 8,
     fontWeight: '500',
@@ -129,13 +147,13 @@ const styles = StyleSheet.create({
     color: '#2196F3',
   },
   discountedPrice: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     color: '#2196F3',
     marginBottom: 2,
   },
   originalPrice: {
-    fontSize: 8,
+    fontSize: 11,
     color: '#999',
     textDecorationLine: 'line-through',
     fontWeight: '500',
