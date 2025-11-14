@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -19,14 +19,17 @@ type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
+  const route = useRoute();
   const { isAuthenticated, user, logout } = useAuth();
   
-  // ✅ HANDLE LOGIN BUTTON - NAVIGATE TO LOGIN SCREEN
+  const parent = navigation.getParent();
+  const parentRoute = parent?.getState().routes[0];
+  const userID = user?.id || 'not Available';
+
   const handleLoginPress = () => {
-    navigation.navigate('Login'); // Pastikan ada screen Login di navigator
+    navigation.navigate('Login'); 
   };
 
-  // ✅ HANDLE LOGOUT
   const handleLogout = () => {
     Alert.alert(
       'Logout',
@@ -45,7 +48,6 @@ const ProfileScreen: React.FC = () => {
     );
   };
 
-  // ✅ AUTH GUARD: Tampilkan login prompt jika belum login
   if (!isAuthenticated) {
     return (
       <SafeAreaView style={styles.container}>

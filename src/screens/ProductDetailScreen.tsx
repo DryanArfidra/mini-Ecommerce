@@ -55,6 +55,11 @@ const ProductDetailScreen: React.FC = () => {
     }
   };
 
+  // ✅ TOMBOL CHECKOUT
+  const handleCheckout = () => {
+    navigation.navigate('Checkout', { productId: product?.id || '' });
+  };
+
   if (!product) {
     return (
       <View style={styles.container}>
@@ -107,6 +112,14 @@ const ProductDetailScreen: React.FC = () => {
           onPress={handleBackToDrawerHome}
         >
           <Text style={styles.actionButtonText}>🏠 Kembali ke Drawer Home</Text>
+        </TouchableOpacity>
+
+        {/* ✅ TOMBOL CHECKOUT */}
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.checkoutButton]}
+          onPress={handleCheckout}
+        >
+          <Text style={styles.actionButtonText}>💰 Checkout Sekarang</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -209,6 +222,9 @@ const styles = StyleSheet.create({
   },
   backButton: {
     backgroundColor: '#4CAF50',
+  },
+  checkoutButton: {
+    backgroundColor: '#9C27B0',
   },
   buyButton: {
     backgroundColor: '#2196F3',

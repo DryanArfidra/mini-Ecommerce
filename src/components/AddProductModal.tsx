@@ -40,11 +40,13 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       category,
       description,
       image: image || 'https://via.placeholder.com/150',
+      isNew: true,
     };
 
     onAddProduct(newProduct);
     resetForm();
     onClose();
+    Alert.alert('Success', 'Produk berhasil ditambahkan!');
   };
 
   const resetForm = () => {
@@ -61,7 +63,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     'Food',
     'Automotive',
     'Baby Gear',
-    'Entertainment',
   ];
 
   return (

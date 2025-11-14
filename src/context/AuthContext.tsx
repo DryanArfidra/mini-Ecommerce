@@ -20,16 +20,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(true); // Default true untuk skip onboarding
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(true);
   const [user, setUser] = useState<User | null>(null);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulasi login process
     return new Promise((resolve) => {
       setTimeout(() => {
         if (email && password) {
           const userData: User = {
-            id: '1',
+            id: 'U123', // ✅ USER ID DARI ROOT
             name: 'Dryan Arfidra',
             email: email,
             avatar: 'https://static.vecteezy.com/system/resources/thumbnails/032/176/191/small/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg'

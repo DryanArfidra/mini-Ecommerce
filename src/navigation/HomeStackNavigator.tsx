@@ -1,12 +1,16 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, TouchableOpacity } from 'react-native';
-import HomeTabsNavigator from './HomeTabsNavigator'; // Level 4
+import HomeTabsNavigator from './HomeTabsNavigator';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
+import CheckoutScreen from '../screens/CheckoutScreen';
+import AddProductScreen from '../screens/AddProductScreen'; 
 
 export type HomeStackParamList = {
   HomeTabs: undefined;
   ProductDetail: { productId: string };
+  Checkout: { productId: string };
+  AddProduct: undefined; // ✅ TAMBAH ROUTE BARU
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -16,7 +20,7 @@ const HomeStackNavigator: React.FC = () => {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#2196F3',
+          backgroundColor: '#1d95f8ff',
         },
         headerTintColor: 'white',
         headerTitleStyle: {
@@ -28,17 +32,22 @@ const HomeStackNavigator: React.FC = () => {
         name="HomeTabs" 
         component={HomeTabsNavigator}
         options={({ navigation }: any) => ({
-          title: 'Mini E-Commerce',
+          title: 'Jelajahi Produk',
           headerLeft: () => (
             <TouchableOpacity 
               onPress={() => navigation.openDrawer()}
               style={{ marginLeft: 15 }}
             >
-              <Text style={{ color: 'white', fontSize: 20 }}>☰</Text>
+              <Text style={{ color: 'white', fontSize: 20 }}>☰   </Text>
             </TouchableOpacity>
           ),
           headerRight: () => (
-            <Text style={{ color: 'white', marginRight: 15, fontSize: 20 }}>🏠</Text>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('AddProduct')}
+              style={{ marginRight: 15 }}
+            >
+              <Text style={{ color: 'white', fontSize: 20 }}>🧺</Text>
+            </TouchableOpacity>
           ),
         })}
       />
@@ -47,6 +56,24 @@ const HomeStackNavigator: React.FC = () => {
         component={ProductDetailScreen}
         options={{
           title: 'Detail Produk',
+          headerBackTitle: 'Kembali',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen 
+        name="Checkout" 
+        component={CheckoutScreen}
+        options={{
+          title: 'Checkout',
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen 
+        name="AddProduct" 
+        component={AddProductScreen}
+        options={{
+          title: 'Tambah Produk',
           headerBackTitle: 'Kembali',
         }}
       />

@@ -45,8 +45,10 @@ const HomeTabsNavigator: React.FC = () => {
           backgroundColor: '#2196F3',
           height: 3,
         },
-        lazy: true, // ✅ LAZY LOADING
-        lazyPreloadDistance: 1, // ✅ PRELOAD TAB BERDEKATAN
+        lazy: true,
+        lazyPreloadDistance: 1,
+        // ✅ GESTURE HANDLING: SWIPE UNTUK TAB, EDGE SWIPE UNTUK DRAWER
+        swipeEnabled: true, // Allow swipe for tabs
       }}
     >
       <Tab.Screen name="Populer" component={PopularScreen} />
