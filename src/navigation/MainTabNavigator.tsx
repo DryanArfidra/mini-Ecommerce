@@ -1,14 +1,13 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text } from 'react-native';
-import HomeStackNavigator from './HomeStackNavigator'; // Level 3
-import ProductListScreen from '../screens/ProductListScreen';
+import HomeStackNavigator from './HomeStackNavigator';
+import ProductStackNavigator from './ProductStackNavigator'; 
 import ProfileScreen from '../screens/ProfileScreen';
 
 export type MainTabParamList = {
   HomeStack: undefined;
-  Products: undefined;
+  ProductsStack: undefined; 
   Profile: undefined;
 };
 
@@ -31,52 +30,50 @@ const TabIcon = ({ focused, icon, label }: { focused: boolean; icon: string; lab
 
 const MainTabNavigator: React.FC = () => {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: 'white',
-            borderTopWidth: 1,
-            borderTopColor: '#f0f0f0',
-            height: 60,
-            paddingBottom: 8,
-            paddingTop: 10,
-          },
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false, 
+        tabBarStyle: {
+          backgroundColor: 'white',
+          borderTopWidth: 1,
+          borderTopColor: '#f0f0f0',
+          height: 75,
+          paddingBottom: 8,
+          paddingTop: 10,
+        },
+      }}
+    >
+      <Tab.Screen 
+        name="HomeStack" 
+        component={HomeStackNavigator}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} icon="🏠" label="" />
+          ),
         }}
-      >
-        <Tab.Screen 
-          name="HomeStack" 
-          component={HomeStackNavigator}
-          options={{
-            tabBarLabel: 'Home',
-            tabBarIcon: ({ focused }) => (
-              <TabIcon focused={focused} icon="🏠" label="" />
-            ),
-          }}
-        />
-        <Tab.Screen 
-          name="Products" 
-          component={ProductListScreen}
-          options={{
-            tabBarLabel: 'Products',
-            tabBarIcon: ({ focused }) => (
-              <TabIcon focused={focused} icon="🛍️" label="" />
-            ),
-          }}
-        />
-        <Tab.Screen 
-          name="Profile" 
-          component={ProfileScreen}
-          options={{
-            tabBarLabel: 'Profile',
-            tabBarIcon: ({ focused }) => (
-              <TabIcon focused={focused} icon="👤" label="" />
-            ),
-          }}
-        />
-      </Tab.Navigator>
-    </SafeAreaView>
+      />
+      <Tab.Screen 
+        name="ProductsStack" 
+        component={ProductStackNavigator} 
+        options={{
+          tabBarLabel: 'Products',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} icon="🛍️" label="" />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} icon="👤" label="" />
+          ),
+        }}
+      />
+    </Tab.Navigator>
   );
 };
 

@@ -1,12 +1,5 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  Image, 
-  StyleSheet, 
-  TouchableOpacity,
-  useWindowDimensions 
-} from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../navigation/HomeStackNavigator';
@@ -14,20 +7,13 @@ import { Product } from '../data/initialProducts';
 
 interface ProductCardProps {
   product: Product;
-  onPress?: (product: Product) => void;
+  onPress?: (product: Product) => void; 
 }
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => {
   const navigation = useNavigation<NavigationProp>();
-  const { width, height } = useWindowDimensions();
-  
-  // ✅ RESPONSIVE LAYOUT BERDASARKAN ORIENTATION
-  const isLandscape = width > height;
-  const cardHeight = isLandscape ? 200 : 220;
-  const imageHeight = isLandscape ? 100 : 120;
-  const numColumns = isLandscape ? 3 : 2;
 
   const handlePress = () => {
     if (onPress) {
@@ -42,11 +28,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => {
     : product.price;
 
   return (
-    <TouchableOpacity 
-      style={[styles.card, { height: cardHeight }]} 
-      onPress={handlePress}
-    >
-      <View style={[styles.imageContainer, { height: imageHeight }]}>
+    <TouchableOpacity style={styles.card} onPress={handlePress}>
+      <View style={styles.imageContainer}>
         <Image source={{ uri: product.image }} style={styles.image} />
         <View style={styles.badgeContainer}>
           {product.isNew && <Text style={[styles.badge, styles.newBadge]}>New</Text>}
@@ -86,11 +69,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     flex: 1,
+    height: 220,
     overflow: 'hidden',
   },
   imageContainer: {
     position: 'relative',
     marginBottom: 10,
+    height: 120,
   },
   image: {
     width: '100%',

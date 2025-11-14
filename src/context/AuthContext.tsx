@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setTimeout(() => {
         if (email && password) {
           const userData: User = {
-            id: 'U123', // ✅ USER ID DARI ROOT
+            id: 'U123', 
             name: 'Dryan Arfidra',
             email: email,
             avatar: 'https://static.vecteezy.com/system/resources/thumbnails/032/176/191/small/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg'

@@ -1,28 +1,28 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, TouchableOpacity } from 'react-native';
-import HomeTabsNavigator from './HomeTabsNavigator';
+import ProductListScreen from '../screens/ProductListScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import AddProductScreen from '../screens/AddProductScreen';
 
-export type HomeStackParamList = {
-  HomeTabs: undefined;
+export type ProductStackParamList = {
+  ProductList: undefined;
   ProductDetail: { productId: string };
   Checkout: { productId: string };
   AddProduct: undefined;
 };
 
-const Stack = createNativeStackNavigator<HomeStackParamList>();
+const Stack = createNativeStackNavigator<ProductStackParamList>();
 
-const HomeStackNavigator: React.FC = () => {
+const ProductStackNavigator: React.FC = () => {
   return (
     <Stack.Navigator>
       <Stack.Screen 
-        name="HomeTabs" 
-        component={HomeTabsNavigator}
+        name="ProductList" 
+        component={ProductListScreen}
         options={({ navigation }: any) => ({
-          title: 'Mini E-Commerce',
+          title: 'All Products',
           headerStyle: {
             backgroundColor: '#2196F3',
           },
@@ -30,12 +30,12 @@ const HomeStackNavigator: React.FC = () => {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-          headerLeft: () => (
+          headerRight: () => (
             <TouchableOpacity 
-              onPress={() => navigation.openDrawer()}
-              style={{ marginLeft: 15 }}
+              onPress={() => navigation.navigate('AddProduct')}
+              style={{ marginRight: 15 }}
             >
-              <Text style={{ color: 'white', fontSize: 20 }}>☰   </Text>
+              <Text style={{ color: 'white', fontSize: 20 }}>🧺</Text>
             </TouchableOpacity>
           ),
         })}
@@ -70,7 +70,7 @@ const HomeStackNavigator: React.FC = () => {
       />
       <Stack.Screen 
         name="AddProduct" 
-        component={AddProductScreen} 
+        component={AddProductScreen}
         options={{
           title: 'Tambah Produk',
           headerStyle: {
@@ -86,4 +86,4 @@ const HomeStackNavigator: React.FC = () => {
   );
 };
 
-export default HomeStackNavigator;
+export default ProductStackNavigator;

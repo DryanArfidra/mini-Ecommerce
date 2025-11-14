@@ -7,15 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Image,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../navigation/HomeStackNavigator';
-import { initialProducts } from '../data/initialProducts';
 
-type AddProductScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList>;
+type AddProductScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'AddProduct'>;
 
 const AddProductScreen: React.FC = () => {
   const navigation = useNavigation<AddProductScreenNavigationProp>();
@@ -32,7 +30,6 @@ const AddProductScreen: React.FC = () => {
     'Food',
     'Automotive',
     'Baby Gear',
-    'Entertainment',
   ];
 
   const handleAddProduct = () => {
@@ -41,7 +38,7 @@ const AddProductScreen: React.FC = () => {
       return;
     }
 
-    // Simulasi penambahan product ke database
+    // Simulasi penambahan product
     const newProduct = {
       id: Date.now().toString(),
       name,
@@ -50,12 +47,9 @@ const AddProductScreen: React.FC = () => {
       description,
       image: image || 'https://via.placeholder.com/300',
       isNew: true,
-      isPopular: Math.random() > 0.5, // Random popular
-      discount: Math.random() > 0.7 ? 10 : undefined, // Random discount
     };
 
-    // Dalam aplikasi real, ini akan dispatch ke Redux/Context atau API call
-    console.log('Product added:', newProduct);
+    console.log('New product added:', newProduct);
     
     Alert.alert(
       'Success', 
@@ -86,13 +80,6 @@ const AddProductScreen: React.FC = () => {
         </View>
 
         <View style={styles.form}>
-          {/* Preview Image */}
-          {image ? (
-            <View style={styles.imagePreview}>
-              <Image source={{ uri: image }} style={styles.previewImage} />
-            </View>
-          ) : null}
-
           <Text style={styles.label}>Nama Produk *</Text>
           <TextInput
             style={styles.input}
@@ -158,7 +145,6 @@ const AddProductScreen: React.FC = () => {
             placeholderTextColor="#999"
           />
 
-          {/* Action Buttons */}
           <TouchableOpacity 
             style={styles.demoButton}
             onPress={handleDemoData}
@@ -171,7 +157,7 @@ const AddProductScreen: React.FC = () => {
             onPress={handleAddProduct}
             disabled={!name || !price || !category}
           >
-            <Text style={styles.addButtonText}>➕ Tambah Produk</Text>
+            <Text style={styles.addButtonText}>🧺 Tambah Produk</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -212,16 +198,6 @@ const styles = StyleSheet.create({
   },
   form: {
     padding: 20,
-  },
-  imagePreview: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  previewImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 10,
-    backgroundColor: '#f0f0f0',
   },
   label: {
     fontSize: 16,

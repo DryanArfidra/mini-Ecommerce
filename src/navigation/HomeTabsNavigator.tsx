@@ -46,9 +46,6 @@ const HomeTabsNavigator: React.FC = () => {
           height: 3,
         },
         lazy: true,
-        lazyPreloadDistance: 1,
-        // ✅ GESTURE HANDLING: SWIPE UNTUK TAB, EDGE SWIPE UNTUK DRAWER
-        swipeEnabled: true, // Allow swipe for tabs
       }}
     >
       <Tab.Screen name="Populer" component={PopularScreen} />
@@ -58,13 +55,7 @@ const HomeTabsNavigator: React.FC = () => {
       <Tab.Screen name="Pakaian" component={FashionScreen} />
       <Tab.Screen name="Makanan" component={FoodScreen} />
       <Tab.Screen name="Otomotif" component={AutomotiveScreen} />
-      <Tab.Screen 
-        name="Perlengkapan Bayi" 
-        component={BabyGearScreen}
-        options={{
-          title: 'Perlengkapan Bayi',
-        }}
-      />
+      <Tab.Screen name="Perlengkapan Bayi" component={BabyGearScreen} />
     </Tab.Navigator>
   );
 };

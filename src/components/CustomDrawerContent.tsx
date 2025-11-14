@@ -72,7 +72,6 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
   );
 };
 
-// STYLE TETAP SAMA
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -11,7 +11,6 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../navigation/HomeStackNavigator';
-import { DrawerParamList } from '../navigation/DrawerNavigator';
 import { initialProducts } from '../data/initialProducts';
 
 type ProductDetailScreenRouteProp = RouteProp<HomeStackParamList, 'ProductDetail'>;
@@ -20,50 +19,24 @@ type ProductDetailScreenNavigationProp = NativeStackNavigationProp<HomeStackPara
 const ProductDetailScreen: React.FC = () => {
   const route = useRoute<ProductDetailScreenRouteProp>();
   const navigation = useNavigation<ProductDetailScreenNavigationProp>();
+  
   const { productId } = route.params;
+
+  console.log('🟣 ProductDetailScreen opened with ID:', productId);
 
   const product = initialProducts.find(p => p.id === productId);
 
-  // ✅ SOAL 3: RESET STACK & TUTUP DRAWER
-  const handleResetStack = () => {
-    // Reset Stack Navigator ke HomeTabs
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'HomeTabs' }],
-    });
-
-    // Tutup drawer secara programatik
-    const drawerNavigation = navigation.getParent() as any;
-    if (drawerNavigation && drawerNavigation.closeDrawer) {
-      drawerNavigation.closeDrawer();
-    }
-
-    Alert.alert('Berhasil', 'Stack telah direset ke Home dan Drawer ditutup');
-  };
-
-  // ✅ SOAL 4: KEMBALI KE DRAWER HOME
-  const handleBackToDrawerHome = () => {
-    // Dapatkan parent navigator (Drawer)
-    const parent = navigation.getParent();
-    
-    if (parent) {
-      // Explicitly go back in parent navigator
-      (parent as any).goBack();
-      Alert.alert('Info', 'Navigasi kembali ke Drawer Home');
-    } else {
-      Alert.alert('Info', 'Tidak ada parent navigator');
-    }
-  };
-
-  // ✅ TOMBOL CHECKOUT
   const handleCheckout = () => {
-    navigation.navigate('Checkout', { productId: product?.id || '' });
+    navigation.navigate('Checkout', { productId: productId });
   };
 
   if (!product) {
     return (
       <View style={styles.container}>
-        <Text>Produk tidak ditemukan</Text>
+        <Text>Product not found</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backButton}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -84,7 +57,7 @@ const ProductDetailScreen: React.FC = () => {
         </View>
 
         <Text style={styles.name}>{product.name}</Text>
-        <Text style={styles.category}>Kategori: {product.category}</Text>
+        <Text style={styles.category}>Category: {product.category}</Text>
         <Text style={styles.description}>{product.description}</Text>
 
         <View style={styles.priceContainer}>
@@ -98,35 +71,25 @@ const ProductDetailScreen: React.FC = () => {
           )}
         </View>
 
-        {/* ✅ SOAL 3: TOMBOL RESET STACK */}
         <TouchableOpacity 
-          style={[styles.actionButton, styles.resetButton]}
-          onPress={handleResetStack}
+          style={styles.buyButton}
+          onPress={() => Alert.alert('Success', 'Product added to cart!')}
         >
-          <Text style={styles.actionButtonText}>🔄 Reset Stack ke Home</Text>
+          <Text style={styles.buyButtonText}>Add to Cart</Text>
         </TouchableOpacity>
 
-        {/* ✅ SOAL 4: TOMBOL KEMBALI KE DRAWER HOME */}
         <TouchableOpacity 
-          style={[styles.actionButton, styles.backButton]}
-          onPress={handleBackToDrawerHome}
-        >
-          <Text style={styles.actionButtonText}>🏠 Kembali ke Drawer Home</Text>
-        </TouchableOpacity>
-
-        {/* ✅ TOMBOL CHECKOUT */}
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.checkoutButton]}
+          style={styles.checkoutButton}
           onPress={handleCheckout}
         >
-          <Text style={styles.actionButtonText}>💰 Checkout Sekarang</Text>
+          <Text style={styles.checkoutButtonText}>Checkout</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.actionButton, styles.buyButton]}
-          onPress={() => Alert.alert('Berhasil', 'Produk ditambahkan ke keranjang!')}
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
         >
-          <Text style={styles.buyButtonText}>🛒 Tambah ke Keranjang</Text>
+          <Text style={styles.backButtonText}>Back to Products</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -161,7 +124,6 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 6,
     marginRight: 8,
-    overflow: 'hidden',
   },
   newBadge: {
     backgroundColor: '#4CAF50',
@@ -211,33 +173,40 @@ const styles = StyleSheet.create({
     color: '#999',
     textDecorationLine: 'line-through',
   },
-  actionButton: {
+  buyButton: {
+    backgroundColor: '#2196F3',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 10,
   },
-  resetButton: {
-    backgroundColor: '#FF9800',
-  },
-  backButton: {
-    backgroundColor: '#4CAF50',
-  },
-  checkoutButton: {
-    backgroundColor: '#9C27B0',
-  },
-  buyButton: {
-    backgroundColor: '#2196F3',
-    marginTop: 10,
-  },
-  actionButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   buyButtonText: {
     color: 'white',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  checkoutButton: {
+    backgroundColor: '#4CAF50',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  checkoutButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  backButton: {
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
+  backButtonText: {
+    color: '#2196F3',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });
