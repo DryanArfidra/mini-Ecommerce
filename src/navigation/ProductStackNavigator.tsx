@@ -1,3 +1,4 @@
+// src/navigation/ProductStackNavigator.tsx
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, TouchableOpacity } from 'react-native';
@@ -8,7 +9,10 @@ import AddProductScreen from '../screens/AddProductScreen';
 
 export type ProductStackParamList = {
   ProductList: undefined;
-  ProductDetail: { productId: string };
+  ProductDetail: { 
+    productId: string;
+    productTitle?: string; 
+  };
   Checkout: { productId: string };
   AddProduct: undefined;
 };
@@ -35,7 +39,7 @@ const ProductStackNavigator: React.FC = () => {
               onPress={() => navigation.navigate('AddProduct')}
               style={{ marginRight: 15 }}
             >
-              <Text style={{ color: 'white', fontSize: 20 }}>🧺</Text>
+              <Text style={{ color: 'white', fontSize: 20 }}>➕</Text>
             </TouchableOpacity>
           ),
         })}
@@ -43,8 +47,8 @@ const ProductStackNavigator: React.FC = () => {
       <Stack.Screen 
         name="ProductDetail" 
         component={ProductDetailScreen}
-        options={{
-          title: 'Detail Produk',
+        options={({ route }: any) => ({
+          title: route.params?.productTitle || 'Product Details', 
           headerStyle: {
             backgroundColor: '#2196F3',
           },
@@ -52,7 +56,7 @@ const ProductStackNavigator: React.FC = () => {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-        }}
+        })}
       />
       <Stack.Screen 
         name="Checkout" 

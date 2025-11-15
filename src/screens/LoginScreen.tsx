@@ -1,3 +1,4 @@
+// src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -15,45 +16,68 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { useAuth } from '../context/AuthContext';
+import apiClient from '../services/apiClient';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+interface LoginResponse {
+  success: boolean;
+  token: string;
+  user?: any;
+}
+
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { login } = useAuth();
-  
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Harap isi email dan password');
+    if (!username || !password) {
+      Alert.alert('Error', 'Please enter both username and password');
       return;
     }
 
-    setIsLoading(true);
-    
+    setLoading(true);
+
     try {
-      const success = await login(email, password);
+      console.log('🔐 Attempting login...');
       
-      if (success) {
-        Alert.alert('Success', 'Login berhasil!');
-        // Navigasi akan otomatis terjadi karena state auth berubah
-      } else {
-        Alert.alert('Error', 'Login gagal. Periksa email dan password Anda.');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Terjadi kesalahan saat login');
+      const response = await apiClient.post('/auth/login', {
+        username,
+        password,
+        expiresInMins: 30, 
+      });
+
+      const data: LoginResponse = response.data;
+      
+      console.log('✅ Login successful! Token:', data.token);
+      
+      Alert.alert(
+        'Login Success',
+        `Welcome! Token: ${data.token}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+
+    } catch (error: any) {
+      console.error('❌ Login failed:', error.message);
+      Alert.alert(
+        'Login Failed',
+        error.message || 'Invalid credentials or network error'
+      );
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const handleDemoLogin = () => {
-    setEmail('demo@example.com');
-    setPassword('password123');
+    setUsername('kminchelle');
+    setPassword('0lelplR');
   };
 
   return (
@@ -65,37 +89,36 @@ const LoginScreen: React.FC = () => {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
             <Text style={styles.title}>Login</Text>
-            <Text style={styles.subtitle}>Masuk ke akun Anda</Text>
+            <Text style={styles.subtitle}>Sign in to your account</Text>
           </View>
 
           <View style={styles.form}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>Username</Text>
             <TextInput
               style={styles.input}
-              placeholder="Masukkan email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              placeholder="Enter username"
+              value={username}
+              onChangeText={setUsername}
               autoCapitalize="none"
-              editable={!isLoading}
+              editable={!loading}
             />
 
             <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
-              placeholder="Masukkan password"
+              placeholder="Enter password"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              editable={!isLoading}
+              editable={!loading}
             />
 
             <TouchableOpacity 
-              style={[styles.loginButton, isLoading && styles.disabledButton]}
+              style={[styles.loginButton, loading && styles.disabledButton]}
               onPress={handleLogin}
-              disabled={isLoading}
+              disabled={loading}
             >
-              {isLoading ? (
+              {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
                 <Text style={styles.loginButtonText}>Login</Text>
@@ -105,16 +128,15 @@ const LoginScreen: React.FC = () => {
             <TouchableOpacity 
               style={styles.demoButton}
               onPress={handleDemoLogin}
-              disabled={isLoading}
+              disabled={loading}
             >
-              <Text style={styles.demoButtonText}>Isi Demo Credentials</Text>
+              <Text style={styles.demoButtonText}>Use Demo Credentials</Text>
             </TouchableOpacity>
 
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Belum punya akun?</Text>
-              <TouchableOpacity>
-                <Text style={styles.registerText}> Daftar di sini</Text>
-              </TouchableOpacity>
+            <View style={styles.demoInfo}>
+              <Text style={styles.demoInfoTitle}>Demo Credentials:</Text>
+              <Text style={styles.demoInfoText}>Username: kminchelle</Text>
+              <Text style={styles.demoInfoText}>Password: 0lelplR</Text>
             </View>
           </View>
         </ScrollView>
@@ -203,19 +225,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+  demoInfo: {
+    backgroundColor: '#e3f2fd',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
   },
-  footerText: {
-    color: '#666',
+  demoInfoTitle: {
     fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1976d2',
+    marginBottom: 4,
   },
-  registerText: {
-    color: '#2196F3',
-    fontSize: 14,
-    fontWeight: '600',
+  demoInfoText: {
+    fontSize: 12,
+    color: '#1976d2',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 });
 
