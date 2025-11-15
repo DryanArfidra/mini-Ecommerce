@@ -1,7 +1,7 @@
-// src/hooks/useProducts.ts (Updated)
-import { useState, useEffect } from 'react';
-import { Alert } from 'react-native';
+// src/hooks/useProducts.ts (Updated dengan retry logic)
+import { useState, useEffect, useCallback } from 'react';
 import { useNetworkStatus } from './useNetworkStatus';
+import { apiMethods } from '../services/apiClient';
 
 export interface Product {
   id: number;
@@ -22,15 +22,28 @@ interface ProductsResponse {
   total: number;
   skip: number;
   limit: number;
+  success?: boolean;
+  message?: string;
 }
 
-export const useProducts = () => {
+interface UseProductsReturn {
+  products: Product[];
+  loading: boolean;
+  error: string | null;
+  retryCount: number;
+  refetch: () => Promise<void>;
+}
+
+export const useProducts = (): UseProductsReturn => {
+  const networkState = useNetworkStatus();
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const networkState = useNetworkStatus();
+  const [retryCount, setRetryCount] = useState(0);
+  const [maxRetries] = useState(3);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async (isRetry = false) => {
     // Check network connection before making request
     if (networkState.isInternetReachable === false) {
       setError('Anda sedang Offline. Cek koneksi Anda.');
@@ -38,44 +51,68 @@ export const useProducts = () => {
       return;
     }
 
-    const abortController = new AbortController();
-    const timeoutId = setTimeout(() => {
-      abortController.abort();
-    }, 7000);
-
-    try {
+    if (!isRetry) {
       setLoading(true);
       setError(null);
+      setRetryCount(0);
+    }
+
+    try {
+      console.log(`🟡 ${isRetry ? `Retry attempt ${retryCount + 1}` : 'Initial'} fetch products...`);
       
-      console.log('🟡 Fetching products from API...');
-      const response = await fetch('https://dummyjson.com/products', {
-        signal: abortController.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: ProductsResponse = await response.json();
+      const response = await apiMethods.getProducts();
+      const data: ProductsResponse = response.data;
+      
       console.log('🟢 Products fetched successfully:', data.products.length);
       setProducts(data.products);
+      setError(null);
+      setRetryCount(0);
+      
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        console.log('🟠 Fetch aborted due to timeout or unmount');
-        setError('Request timeout. Please try again.');
+      console.error(`🔴 Fetch failed (attempt ${retryCount + 1}):`, err.message);
+      
+      const shouldRetry = 
+        retryCount < maxRetries && 
+        (err.code === 'ECONNABORTED' || !err.response || err.response?.status >= 500);
+      
+      if (shouldRetry) {
+        const nextRetryCount = retryCount + 1;
+        const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+        
+        console.log(`⏳ Scheduled retry ${nextRetryCount} in ${delay}ms`);
+        
+        setRetryCount(nextRetryCount);
+        
+        setTimeout(() => {
+          fetchProducts(true);
+        }, delay);
+        
+        setError(`Gagal memuat produk. Mencoba lagi... (${nextRetryCount}/${maxRetries})`);
       } else {
-        console.log('🔴 Fetch error:', err.message);
-        setError(err.message || 'Failed to fetch products');
+        setLoading(false);
+        if (retryCount >= maxRetries) {
+          setError('Gagal memuat produk setelah beberapa percobaan. Silakan coba lagi nanti.');
+        } else {
+          setError(err.userMessage || 'Gagal memuat produk. Silakan coba lagi.');
+        }
       }
     } finally {
-      setLoading(false);
-      clearTimeout(timeoutId);
+      if (!isRetry || retryCount >= maxRetries) {
+        setLoading(false);
+      }
     }
-  };
+  }, [networkState.isInternetReachable, retryCount, maxRetries]);
 
+  // Initial load
   useEffect(() => {
     fetchProducts();
-  }, [networkState.isInternetReachable]);
+  }, [fetchProducts]);
 
-  return { products, loading, error, refetch: fetchProducts };
+  return {
+    products,
+    loading,
+    error,
+    retryCount,
+    refetch: () => fetchProducts(),
+  };
 };

@@ -1,8 +1,6 @@
-// src/services/apiClient.ts
 import axios from 'axios';
 import { Alert } from 'react-native';
 
-// Create axios instance with default config
 const apiClient = axios.create({
   baseURL: 'https://dummyjson.com',
   timeout: 10000, // 10 seconds
@@ -11,10 +9,8 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor to add custom headers
 apiClient.interceptors.request.use(
   (config) => {
-    // Add custom header to every request
     config.headers['X-Client-Platform'] = 'React-Native';
     
     console.log('🚀 API Request:', {
@@ -31,7 +27,6 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor for global response handling and transformation
 apiClient.interceptors.response.use(
   (response) => {
     console.log('✅ API Response:', {
@@ -40,9 +35,7 @@ apiClient.interceptors.response.use(
       data: response.data,
     });
 
-    // Transform specific responses
     if (response.config.url?.includes('/auth/login') && response.status === 200) {
-      // Transform login response to match our expected format
       const transformedResponse = {
         ...response,
         data: {
@@ -56,7 +49,6 @@ apiClient.interceptors.response.use(
       return transformedResponse;
     }
 
-    // Transform products response if needed
     if (response.config.url?.includes('/products') && response.status === 200) {
       const transformedResponse = {
         ...response,
@@ -69,7 +61,6 @@ apiClient.interceptors.response.use(
       return transformedResponse;
     }
 
-    // Transform cart response if needed
     if (response.config.url?.includes('/carts') && response.status === 200) {
       const transformedResponse = {
         ...response,
@@ -95,7 +86,6 @@ apiClient.interceptors.response.use(
     let errorMessage = 'An unexpected error occurred';
     
     if (error.response) {
-      // Server responded with error status
       switch (error.response.status) {
         case 400:
           errorMessage = 'Bad request - please check your input';
@@ -122,21 +112,17 @@ apiClient.interceptors.response.use(
           errorMessage = `Server error: ${error.response.status}`;
       }
     } else if (error.request) {
-      // Request was made but no response received
       if (error.code === 'ECONNABORTED') {
         errorMessage = 'Request timeout - please check your connection';
       } else {
         errorMessage = 'Network error - no response from server';
       }
     } else {
-      // Something happened in setting up the request
       errorMessage = error.message || 'Request configuration error';
     }
     
-    // Enhance error object with user-friendly message
     error.userMessage = errorMessage;
     
-    // Show alert for critical errors (optional)
     if (error.response?.status >= 500) {
       Alert.alert('Server Error', errorMessage);
     }
@@ -145,13 +131,10 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Helper methods for common API calls
 export const apiMethods = {
-  // Auth methods
   login: (credentials: { username: string; password: string }) => 
     apiClient.post('/auth/login', credentials),
   
-  // Product methods
   getProducts: (limit: number = 30, skip: number = 0) =>
     apiClient.get(`/products?limit=${limit}&skip=${skip}`),
   
@@ -164,13 +147,37 @@ export const apiMethods = {
   searchProducts: (query: string) =>
     apiClient.get(`/products/search?q=${query}`),
   
-  // Cart methods
   getCart: (id: string | number = 1) =>
     apiClient.get(`/carts/${id}`),
   
-  // User methods
   getUser: (id: string | number) =>
     apiClient.get(`/users/${id}`),
+
+  post: (url: string, data?: any) =>
+    apiClient.post(url, data),
+
+  get: (url: string, params?: any) =>
+    apiClient.get(url, { params }),
+
+  put: (url: string, data?: any) =>
+    apiClient.put(url, data),
+
+  patch: (url: string, data?: any) =>
+    apiClient.patch(url, data),
+
+  delete: (url: string) =>
+    apiClient.delete(url),
+
+  addToCart: (productId: number, quantity: number = 1) =>
+    apiClient.post('/carts/add', {
+      userId: 1, 
+      products: [
+        {
+          id: productId,
+          quantity: quantity,
+        }
+      ]
+    }),
 };
 
 export default apiClient;
