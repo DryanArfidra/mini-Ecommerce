@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const apiClient = axios.create({
   baseURL: 'https://dummyjson.com',
@@ -9,9 +10,87 @@ const apiClient = axios.create({
   },
 });
 
+// Constants for cache
+const CACHE_KEYS = {
+  CATEGORIES: 'categories_cache',
+  CATEGORIES_TIMESTAMP: 'categories_timestamp',
+};
+
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+// Cache utility functions
+const cacheUtils = {
+  // Check if cache is valid
+  isCacheValid: (timestamp: number): boolean => {
+    return Date.now() - timestamp < CACHE_TTL;
+  },
+
+  // Get categories from cache
+  getCachedCategories: async (): Promise<any[] | null> => {
+    try {
+      const [cachedData, timestamp] = await AsyncStorage.multiGet([
+        CACHE_KEYS.CATEGORIES,
+        CACHE_KEYS.CATEGORIES_TIMESTAMP
+      ]);
+
+      const categoriesJson = cachedData[1];
+      const timestampValue = timestamp[1];
+
+      if (categoriesJson && timestampValue) {
+        const cacheTime = parseInt(timestampValue);
+        if (cacheUtils.isCacheValid(cacheTime)) {
+          console.log('📦 Using cached categories (valid)');
+          return JSON.parse(categoriesJson);
+        } else {
+          console.log('🕒 Categories cache expired');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error reading categories cache:', error);
+    }
+    return null;
+  },
+
+  // Save categories to cache
+  setCachedCategories: async (categories: any[]): Promise<void> => {
+    try {
+      await AsyncStorage.multiSet([
+        [CACHE_KEYS.CATEGORIES, JSON.stringify(categories)],
+        [CACHE_KEYS.CATEGORIES_TIMESTAMP, Date.now().toString()]
+      ]);
+      console.log('💾 Categories cached successfully');
+    } catch (error) {
+      console.error('❌ Error caching categories:', error);
+    }
+  },
+
+  // Clear categories cache
+  clearCategoriesCache: async (): Promise<void> => {
+    try {
+      await AsyncStorage.multiRemove([
+        CACHE_KEYS.CATEGORIES,
+        CACHE_KEYS.CATEGORIES_TIMESTAMP
+      ]);
+      console.log('🧹 Categories cache cleared');
+    } catch (error) {
+      console.error('❌ Error clearing categories cache:', error);
+    }
+  }
+};
+
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     config.headers['X-Client-Platform'] = 'React-Native';
+    
+    // Add auth token if available
+    try {
+      const token = await AsyncStorage.getItem('auth_token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error('❌ Error getting auth token:', error);
+    }
     
     console.log('🚀 API Request:', {
       url: config.url,
@@ -141,8 +220,17 @@ export const apiMethods = {
   getProduct: (id: string | number) =>
     apiClient.get(`/products/${id}`),
   
-  getProductsByCategory: (category: string) =>
-    apiClient.get(`/products/category/${category}`),
+  getProductsByCategory: async (category: string) => {
+    // Cache-first strategy for categories
+    const cachedCategories = await cacheUtils.getCachedCategories();
+    if (cachedCategories) {
+      console.log('📦 Returning cached categories data');
+      return { data: cachedCategories };
+    }
+    
+    console.log('🌐 Fetching categories from API');
+    return apiClient.get(`/products/category/${category}`);
+  },
   
   searchProducts: (query: string) =>
     apiClient.get(`/products/search?q=${query}`),
@@ -178,6 +266,9 @@ export const apiMethods = {
         }
       ]
     }),
+
+  // Cache management methods
+  cacheUtils,
 };
 
 export default apiClient;

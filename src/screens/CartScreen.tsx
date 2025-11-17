@@ -6,10 +6,12 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import apiClient from '../services/apiClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface CartTotal {
   total: number;
@@ -18,11 +20,133 @@ interface CartTotal {
   totalQuantity: number;
 }
 
+interface CartItem {
+  id: string;
+  productId: number;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+const CART_STORAGE_KEY = 'user_cart';
+
 const CartScreen: React.FC = () => {
   const [cartTotal, setCartTotal] = useState<CartTotal | null>(null);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [pollingCount, setPollingCount] = useState(0);
   const networkState = useNetworkStatus();
+
+  // Load cart from AsyncStorage on component mount
+  useEffect(() => {
+    loadCartFromStorage();
+  }, []);
+
+  const loadCartFromStorage = async () => {
+    try {
+      const cartData = await AsyncStorage.getItem(CART_STORAGE_KEY);
+      if (cartData) {
+        const parsedCart = JSON.parse(cartData);
+        setCartItems(parsedCart.items || []);
+        calculateLocalTotal(parsedCart.items || []);
+        console.log('🛒 Cart loaded from storage:', parsedCart.items.length, 'items');
+      }
+    } catch (error) {
+      console.error('❌ Error loading cart from storage:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveCartToStorage = async (items: CartItem[]) => {
+    try {
+      const cartData = {
+        items,
+        lastUpdated: new Date().toISOString(),
+      };
+      await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartData));
+      console.log('💾 Cart saved to storage');
+    } catch (error: any) {
+      console.error('❌ Error saving cart:', error);
+      
+      // Handle Quota Exceeded error
+      if (error?.message?.includes('QuotaExceededError') || error?.message?.includes('exceeded')) {
+        Alert.alert(
+          'Storage Full',
+          'Your device storage is full. Please free up some space to save your cart.',
+          [{ text: 'OK' }]
+        );
+      }
+    }
+  };
+
+  const updateCartItemQuantity = async (itemId: string, newQuantity: number) => {
+    try {
+      const updatedItems = cartItems.map(item => 
+        item.id === itemId ? { ...item, quantity: newQuantity } : item
+      ).filter(item => item.quantity > 0); // Remove if quantity is 0
+
+      setCartItems(updatedItems);
+      calculateLocalTotal(updatedItems);
+
+      // Use mergeItem for efficient partial updates
+      const mergeData = {
+        [itemId]: { quantity: newQuantity }
+      };
+
+      try {
+        await AsyncStorage.mergeItem(CART_STORAGE_KEY, JSON.stringify(mergeData));
+        console.log('🔄 Cart item updated with mergeItem');
+      } catch (mergeError) {
+        // Fallback to full save if merge fails
+        console.log('🔄 Fallback to full cart save');
+        await saveCartToStorage(updatedItems);
+      }
+
+    } catch (error) {
+      console.error('❌ Error updating cart item:', error);
+      Alert.alert('Error', 'Failed to update cart item');
+    }
+  };
+
+  const addSampleItem = async () => {
+    const newItem: CartItem = {
+      id: `item_${Date.now()}`,
+      productId: Math.floor(Math.random() * 1000),
+      name: `Sample Product ${cartItems.length + 1}`,
+      price: Math.floor(Math.random() * 100) + 10,
+      quantity: 1,
+    };
+
+    const updatedItems = [...cartItems, newItem];
+    setCartItems(updatedItems);
+    calculateLocalTotal(updatedItems);
+    await saveCartToStorage(updatedItems);
+  };
+
+  const calculateLocalTotal = (items: CartItem[]) => {
+    const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+    
+    setCartTotal({
+      total,
+      discountedTotal: total * 0.9, // 10% discount for demo
+      totalProducts: items.length,
+      totalQuantity,
+    });
+  };
+
+  const clearCart = async () => {
+    try {
+      await AsyncStorage.removeItem(CART_STORAGE_KEY);
+      setCartItems([]);
+      setCartTotal(null);
+      Alert.alert('Success', 'Cart cleared successfully');
+    } catch (error) {
+      console.error('❌ Error clearing cart:', error);
+      Alert.alert('Error', 'Failed to clear cart');
+    }
+  };
 
   const fetchCartTotal = async () => {
     try {
@@ -110,6 +234,46 @@ const CartScreen: React.FC = () => {
           </Text>
         </View>
 
+        {/* Cart Actions */}
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity style={styles.actionButton} onPress={addSampleItem}>
+            <Text style={styles.actionButtonText}>Add Sample Item</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionButton, styles.clearButton]} onPress={clearCart}>
+            <Text style={styles.actionButtonText}>Clear Cart</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Local Cart Items */}
+        {cartItems.length > 0 && (
+          <View style={styles.localCartSection}>
+            <Text style={styles.sectionTitle}>Your Cart Items ({cartItems.length})</Text>
+            {cartItems.map((item) => (
+              <View key={item.id} style={styles.cartItem}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName}>{item.name}</Text>
+                  <Text style={styles.itemPrice}>${item.price} x {item.quantity}</Text>
+                </View>
+                <View style={styles.quantityControls}>
+                  <TouchableOpacity 
+                    style={styles.quantityButton}
+                    onPress={() => updateCartItemQuantity(item.id, item.quantity - 1)}
+                  >
+                    <Text style={styles.quantityButtonText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.quantityText}>{item.quantity}</Text>
+                  <TouchableOpacity 
+                    style={styles.quantityButton}
+                    onPress={() => updateCartItemQuantity(item.id, item.quantity + 1)}
+                  >
+                    <Text style={styles.quantityButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Cart Summary */}
         {cartTotal && (
           <View style={styles.cartSummary}>
@@ -145,17 +309,20 @@ const CartScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Polling Info */}
+        {/* Storage Info */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Polling Information</Text>
+          <Text style={styles.infoTitle}>Cart Storage Information</Text>
           <Text style={styles.infoText}>
-            • Updates every 15 seconds
+            • Cart data persisted locally
           </Text>
           <Text style={styles.infoText}>
-            • Automatically stops on mobile data
+            • Uses mergeItem for efficient updates
           </Text>
           <Text style={styles.infoText}>
-            • Last update: {new Date().toLocaleTimeString()}
+            • Handles storage quota errors
+          </Text>
+          <Text style={styles.infoText}>
+            • Last updated: {new Date().toLocaleTimeString()}
           </Text>
         </View>
       </ScrollView>
@@ -222,6 +389,82 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#2196F3',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  clearButton: {
+    backgroundColor: '#f44336',
+  },
+  actionButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  localCartSection: {
+    backgroundColor: 'white',
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#333',
+  },
+  cartItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  itemPrice: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  quantityButton: {
+    backgroundColor: '#f0f0f0',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  quantityText: {
+    fontSize: 16,
+    fontWeight: '500',
+    minWidth: 20,
+    textAlign: 'center',
   },
   cartSummary: {
     backgroundColor: 'white',
