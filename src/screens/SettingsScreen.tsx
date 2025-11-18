@@ -8,8 +8,8 @@ import {
   Switch,
   Alert,
 } from 'react-native';
-import { useDrawerLock } from '../navigation/DrawerNavigator';
 import { useNavigation } from '@react-navigation/native';
+import useDrawerLock from '../context/useDrawerLock';
 
 const SettingsScreen: React.FC = () => {
   const { drawerLocked, setDrawerLocked } = useDrawerLock();

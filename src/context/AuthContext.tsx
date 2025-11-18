@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
+import { apiMethods } from '../services/apiClient';
 
 interface User {
   id: string;
@@ -12,7 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isOnboardingCompleted: boolean;
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   completeOnboarding: () => void;
   isLoading: boolean;
@@ -91,20 +93,79 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string): Promise<boolean> => {
+  try {
+    console.log('🔐 Attempting login with API...');
+    
+    // HAPUS expiresInMins dari sini
+    const response = await apiMethods.login({
+      username,
+      password,
+      // expiresInMins: 30, // HAPUS BARIS INI
+    });
+
+    const data = response.data;
+    
+    if (data.success && data.token) {
+      // Buat user data dari response API
+      const userData: User = {
+        id: data.user?.id?.toString() || 'U123',
+        name: data.user?.firstName + ' ' + data.user?.lastName || 'Demo User',
+        email: data.user?.email || `${username}@demo.com`,
+        avatar: data.user?.image || 'https://static.vecteezy.com/system/resources/thumbnails/032/176/191/small/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg'
+      };
+      
+      // Simpan token dan user data ke AsyncStorage
+      await AsyncStorage.multiSet([
+        [AUTH_KEYS.TOKEN, data.token],
+        [AUTH_KEYS.USER_DATA, JSON.stringify(userData)]
+      ]);
+      
+      setUser(userData);
+      setIsAuthenticated(true);
+      console.log('✅ Login successful, data saved to storage');
+      return true;
+    } else {
+      console.log('❌ Login failed - no token received');
+      return false;
+    }
+    
+  } catch (error: any) {
+    console.error('❌ Login API error:', error.message);
+    
+    // Fallback ke mock login untuk development
+    console.log('🔄 Using fallback mock login...');
+    return await mockLogin(username, password);
+  }
+};
+
+  const mockLogin = async (username: string, password: string): Promise<boolean> => {
     return new Promise((resolve) => {
       setTimeout(async () => {
-        if (email && password) {
+        // Valid credentials untuk fallback
+        const validCredentials = [
+          { username: 'kminchelle', password: '0lelplR' },
+          { username: 'emilys', password: 'emilyspass' },
+          { username: 'atuny0', password: '9uQFF1Lh' },
+          { username: 'demo', password: 'demo' } // Simple fallback
+        ];
+
+        const isValid = validCredentials.some(
+          cred => cred.username === username && cred.password === password
+        );
+
+        if (isValid) {
           const userData: User = {
             id: 'U123', 
-            name: 'Dryan Arfidra',
-            email: email,
+            name: username === 'kminchelle' ? 'Dryan Arfidra' : 
+                  username === 'emilys' ? 'Emily Johnson' : 
+                  username === 'atuny0' ? 'Tony Stark' : 'Demo User',
+            email: `${username}@demo.com`,
             avatar: 'https://static.vecteezy.com/system/resources/thumbnails/032/176/191/small/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg'
           };
           
           try {
-            // Simpan token dan user data ke AsyncStorage
-            const token = `token_${Date.now()}`;
+            const token = `mock_token_${Date.now()}`;
             await AsyncStorage.multiSet([
               [AUTH_KEYS.TOKEN, token],
               [AUTH_KEYS.USER_DATA, JSON.stringify(userData)]
@@ -112,13 +173,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             
             setUser(userData);
             setIsAuthenticated(true);
-            console.log('✅ Login successful, data saved to storage');
+            console.log('✅ Mock login successful');
             resolve(true);
           } catch (error) {
-            console.error('❌ Error saving login data:', error);
+            console.error('❌ Error saving mock login data:', error);
             resolve(false);
           }
         } else {
+          console.log('❌ Invalid credentials in mock login');
           resolve(false);
         }
       }, 1000);

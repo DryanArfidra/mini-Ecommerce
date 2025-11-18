@@ -4,28 +4,24 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const apiClient = axios.create({
   baseURL: 'https://dummyjson.com',
-  timeout: 10000, // 10 seconds
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Constants for cache
 const CACHE_KEYS = {
   CATEGORIES: 'categories_cache',
   CATEGORIES_TIMESTAMP: 'categories_timestamp',
 };
 
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes in milliseconds
+const CACHE_TTL = 30 * 60 * 1000; 
 
-// Cache utility functions
 const cacheUtils = {
-  // Check if cache is valid
   isCacheValid: (timestamp: number): boolean => {
     return Date.now() - timestamp < CACHE_TTL;
   },
 
-  // Get categories from cache
   getCachedCategories: async (): Promise<any[] | null> => {
     try {
       const [cachedData, timestamp] = await AsyncStorage.multiGet([
@@ -51,7 +47,6 @@ const cacheUtils = {
     return null;
   },
 
-  // Save categories to cache
   setCachedCategories: async (categories: any[]): Promise<void> => {
     try {
       await AsyncStorage.multiSet([
@@ -64,7 +59,6 @@ const cacheUtils = {
     }
   },
 
-  // Clear categories cache
   clearCategoriesCache: async (): Promise<void> => {
     try {
       await AsyncStorage.multiRemove([
@@ -82,7 +76,6 @@ apiClient.interceptors.request.use(
   async (config) => {
     config.headers['X-Client-Platform'] = 'React-Native';
     
-    // Add auth token if available
     try {
       const token = await AsyncStorage.getItem('auth_token');
       if (token) {
@@ -211,7 +204,7 @@ apiClient.interceptors.response.use(
 );
 
 export const apiMethods = {
-  login: (credentials: { username: string; password: string }) => 
+  login: (credentials: { username: string; password: string; expiresInMins?: number }) => 
     apiClient.post('/auth/login', credentials),
   
   getProducts: (limit: number = 30, skip: number = 0) =>

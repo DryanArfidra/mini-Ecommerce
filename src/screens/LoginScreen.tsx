@@ -1,4 +1,3 @@
-// src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -16,21 +15,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import apiClient from '../services/apiClient';
+import { useAuth } from '../context/AuthContext';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-interface LoginResponse {
-  success: boolean;
-  token: string;
-  user?: any;
-}
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -43,33 +37,19 @@ const LoginScreen: React.FC = () => {
     try {
       console.log('🔐 Attempting login...');
       
-      const response = await apiClient.post('/auth/login', {
-        username,
-        password,
-        expiresInMins: 30, 
-      });
-
-      const data: LoginResponse = response.data;
+      const success = await login(username, password);
       
-      console.log('✅ Login successful! Token:', data.token);
-      
-      Alert.alert(
-        'Login Success',
-        `Welcome! Token: ${data.token}`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      if (success) {
+        console.log('✅ Login successful!');
+        Alert.alert('Success', 'Login successful!');
+        // Navigation akan otomatis handled oleh AppNavigator karena state isAuthenticated berubah
+      } else {
+        Alert.alert('Error', 'Invalid username or password');
+      }
 
     } catch (error: any) {
       console.error('❌ Login failed:', error.message);
-      Alert.alert(
-        'Login Failed',
-        error.message || 'Invalid credentials or network error'
-      );
+      Alert.alert('Login Failed', error.message || 'Invalid credentials or network error');
     } finally {
       setLoading(false);
     }
@@ -137,6 +117,7 @@ const LoginScreen: React.FC = () => {
               <Text style={styles.demoInfoTitle}>Demo Credentials:</Text>
               <Text style={styles.demoInfoText}>Username: kminchelle</Text>
               <Text style={styles.demoInfoText}>Password: 0lelplR</Text>
+              <Text style={styles.demoInfoText}>(or any valid DummyJSON credentials)</Text>
             </View>
           </View>
         </ScrollView>
@@ -145,6 +126,7 @@ const LoginScreen: React.FC = () => {
   );
 };
 
+// Styles tetap sama...
 const styles = StyleSheet.create({
   container: {
     flex: 1,
