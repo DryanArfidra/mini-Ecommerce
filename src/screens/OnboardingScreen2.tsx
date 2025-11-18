@@ -6,12 +6,27 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useAuth } from '../context/AuthContext';
+import { OnboardingStackParamList } from '../navigation/OnboardingStack';
 
-interface OnboardingScreen2Props {
-  navigation: any;
-}
+type OnboardingScreen2NavigationProp = NativeStackNavigationProp<OnboardingStackParamList>;
 
-const OnboardingScreen2: React.FC<OnboardingScreen2Props> = ({ navigation }) => {
+const OnboardingScreen2: React.FC = () => {
+  const navigation = useNavigation<OnboardingScreen2NavigationProp>();
+  const { completeOnboarding } = useAuth();
+
+  const handleGetStarted = async () => {
+    // Mark onboarding as completed
+    await completeOnboarding();
+    // Navigation will be handled automatically by AppNavigator
+  };
+
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
   return (
     <View style={styles.container}>
       <Image
@@ -24,11 +39,11 @@ const OnboardingScreen2: React.FC<OnboardingScreen2Props> = ({ navigation }) => 
       </Text>
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('Main')}
+        onPress={handleGetStarted}
       >
         <Text style={styles.buttonText}>Mulai Belanja</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.goBack()}>
+      <TouchableOpacity onPress={handleBack}>
         <Text style={styles.backText}>Kembali</Text>
       </TouchableOpacity>
     </View>

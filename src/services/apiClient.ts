@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import KeychainService from './KeychainService';
 
 const apiClient = axios.create({
   baseURL: 'https://dummyjson.com',
@@ -10,13 +11,15 @@ const apiClient = axios.create({
   },
 });
 
+// Constants for cache
 const CACHE_KEYS = {
   CATEGORIES: 'categories_cache',
   CATEGORIES_TIMESTAMP: 'categories_timestamp',
 };
 
-const CACHE_TTL = 30 * 60 * 1000; 
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
+// Cache utility functions
 const cacheUtils = {
   isCacheValid: (timestamp: number): boolean => {
     return Date.now() - timestamp < CACHE_TTL;
@@ -72,29 +75,76 @@ const cacheUtils = {
   }
 };
 
+// Initialize API Key on app start
+export const initializeApiKey = async (): Promise<void> => {
+  try {
+    // Check if API key already exists
+    const existingApiKey = await KeychainService.getApiKey();
+    
+    if (!existingApiKey) {
+      // Save static API key to Keychain
+      const staticApiKey = 'API_KEY_SECRET_XYZ_12345_' + Date.now();
+      await KeychainService.saveApiKey(staticApiKey);
+      console.log('🔐 Static API key initialized in Keychain');
+    } else {
+      console.log('🔐 API key already exists in Keychain');
+    }
+  } catch (error) {
+    console.error('❌ Error initializing API key:', error);
+  }
+};
+
 apiClient.interceptors.request.use(
   async (config) => {
-    config.headers['X-Client-Platform'] = 'React-Native';
-    
     try {
-      const token = await AsyncStorage.getItem('auth_token');
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
+      // Get API Key from Keychain for every request
+      const apiKey = await KeychainService.getApiKey();
+      
+      if (!apiKey) {
+        console.error('❌ API Key not found in Keychain');
+        throw new Error('UNAUTHORIZED: API Key missing');
       }
-    } catch (error) {
-      console.error('❌ Error getting auth token:', error);
+
+      // Add API Key to headers
+      config.headers['X-API-Key'] = apiKey;
+      config.headers['X-Client-Platform'] = 'React-Native';
+      
+      // Add auth token if available
+      const authToken = await KeychainService.getAuthToken();
+      if (authToken) {
+        config.headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      console.log('🚀 API Request:', {
+        url: config.url,
+        method: config.method?.toUpperCase(),
+        hasApiKey: !!apiKey,
+        hasAuthToken: !!authToken,
+      });
+      
+      return config;
+    } catch (error: any) {
+      console.error('❌ Request interceptor error:', error);
+      
+      // Handle API Key not found
+      if (error.message?.includes('UNAUTHORIZED') || error.message?.includes('ACCESS_DENIED')) {
+        // Stop the request and show error
+        Alert.alert(
+          'Authentication Error',
+          'Unable to access secure credentials. Please restart the app.',
+          [{ text: 'OK' }]
+        );
+        return Promise.reject({
+          ...error,
+          userMessage: 'Secure storage access failed. Please restart the app.',
+        });
+      }
+      
+      return Promise.reject(error);
     }
-    
-    console.log('🚀 API Request:', {
-      url: config.url,
-      method: config.method?.toUpperCase(),
-      headers: config.headers,
-    });
-    
-    return config;
   },
   (error) => {
-    console.error('❌ Request interceptor error:', error);
+    console.error('❌ Request interceptor setup error:', error);
     return Promise.reject(error);
   }
 );
@@ -204,6 +254,9 @@ apiClient.interceptors.response.use(
 );
 
 export const apiMethods = {
+  // Initialize API Key
+  initializeApiKey,
+  
   login: (credentials: { username: string; password: string; expiresInMins?: number }) => 
     apiClient.post('/auth/login', credentials),
   
@@ -222,7 +275,14 @@ export const apiMethods = {
     }
     
     console.log('🌐 Fetching categories from API');
-    return apiClient.get(`/products/category/${category}`);
+    const response = await apiClient.get(`/products/category/${category}`);
+    
+    // Cache the categories
+    if (response.data && Array.isArray(response.data.products)) {
+      await cacheUtils.setCachedCategories(response.data.products);
+    }
+    
+    return response;
   },
   
   searchProducts: (query: string) =>

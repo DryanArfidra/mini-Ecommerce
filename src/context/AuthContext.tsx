@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { apiMethods } from '../services/apiClient';
+import KeychainService, { KeychainServices } from '../services/KeychainService';
 
 interface User {
   id: string;
@@ -10,71 +11,143 @@ interface User {
   avatar: string;
 }
 
+interface AppPreferences {
+  theme: 'light' | 'dark';
+  notifications: boolean;
+  language: string;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   isOnboardingCompleted: boolean;
   user: User | null;
+  preferences: AppPreferences;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   completeOnboarding: () => void;
   isLoading: boolean;
+  updatePreferences: (newPreferences: Partial<AppPreferences>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Keys for AsyncStorage
-const AUTH_KEYS = {
-  TOKEN: 'auth_token',
+// Keys for AsyncStorage (non-sensitive data)
+const STORAGE_KEYS = {
   USER_DATA: 'user_data',
   THEME: 'app_theme',
   NOTIFICATION: 'notification_status',
+  LANGUAGE: 'app_language',
+  ONBOARDING: 'onboarding_completed',
+} as const;
+
+// Default preferences
+const defaultPreferences: AppPreferences = {
+  theme: 'light',
+  notifications: true,
+  language: 'id',
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [preferences, setPreferences] = useState<AppPreferences>(defaultPreferences);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Multi-key load saat app pertama kali dibuka
+  // Hybrid Storage Load - Load both secure and non-sensitive data in parallel
   useEffect(() => {
     loadInitialData();
   }, []);
 
   const loadInitialData = async () => {
     try {
-      console.log('🚀 Loading initial data with multiGet...');
+      console.log('🚀 Loading initial data with Hybrid Storage...');
       
-      // MultiGet untuk load semua data penting sekaligus
-      const keys = [AUTH_KEYS.TOKEN, AUTH_KEYS.USER_DATA, AUTH_KEYS.THEME, AUTH_KEYS.NOTIFICATION];
-      const values = await AsyncStorage.multiGet(keys);
-      
-      const [
-        [, token],
-        [, userData],
-        [, theme],
-        [, notificationStatus]
-      ] = values;
+      // Load both secure (Keychain) and non-sensitive (AsyncStorage) data in parallel
+      const [tokenResult, storageData] = await Promise.allSettled([
+        // Secure data from Keychain
+        KeychainService.getAuthToken(),
+        
+        // Non-sensitive data from AsyncStorage
+        AsyncStorage.multiGet([
+          STORAGE_KEYS.USER_DATA,
+          STORAGE_KEYS.THEME,
+          STORAGE_KEYS.NOTIFICATION,
+          STORAGE_KEYS.LANGUAGE,
+          STORAGE_KEYS.ONBOARDING,
+        ]),
+      ]);
 
-      console.log('📦 MultiGet results:', {
-        token: token ? 'exists' : 'null',
-        userData: userData ? 'exists' : 'null',
-        theme: theme || 'default',
-        notification: notificationStatus || 'default'
-      });
-
-      // Cek token dan user data
-      if (token && userData) {
-        try {
-          const user = JSON.parse(userData);
-          setUser(user);
-          setIsAuthenticated(true);
-          console.log('✅ Auto-login successful');
-        } catch (parseError) {
-          console.error('❌ Error parsing user data:', parseError);
-          await clearAuthData();
+      // Handle secure data (token) result
+      let token: string | null = null;
+      if (tokenResult.status === 'fulfilled') {
+        token = tokenResult.value;
+      } else {
+        console.error('❌ Error loading token from Keychain:', tokenResult.reason);
+        
+        // Handle access denied specifically
+        if (tokenResult.reason.message?.includes('ACCESS_DENIED')) {
+          Alert.alert(
+            'Keamanan Perubahan Perangkat',
+            'Keamanan perangkat diubah, mohon login ulang.',
+            [{ text: 'OK' }]
+          );
+          await handleSecurityBreach();
+          return;
         }
       }
+
+      // Handle non-sensitive data result
+      let userData: User | null = null;
+      let loadedPreferences: AppPreferences = { ...defaultPreferences };
+      let onboardingCompleted = true;
+
+      if (storageData.status === 'fulfilled') {
+        const [
+          [, userDataJson],
+          [, theme],
+          [, notifications],
+          [, language],
+          [, onboarding],
+        ] = storageData.value;
+
+        // Parse user data
+        if (userDataJson) {
+          try {
+            userData = JSON.parse(userDataJson);
+          } catch (parseError) {
+            console.error('❌ Error parsing user data:', parseError);
+          }
+        }
+
+        // Load preferences
+        loadedPreferences = {
+          theme: (theme as AppPreferences['theme']) || defaultPreferences.theme,
+          notifications: notifications ? JSON.parse(notifications) : defaultPreferences.notifications,
+          language: language || defaultPreferences.language,
+        };
+
+        onboardingCompleted = onboarding ? JSON.parse(onboarding) : true;
+      } else {
+        console.error('❌ Error loading storage data:', storageData.reason);
+      }
+
+      console.log('📦 Hybrid Storage results:', {
+        token: token ? 'exists' : 'null',
+        userData: userData ? 'exists' : 'null',
+        preferences: loadedPreferences,
+        onboardingCompleted,
+      });
+
+      // Set authentication state
+      if (token && userData) {
+        setUser(userData);
+        setIsAuthenticated(true);
+        console.log('✅ Auto-login successful from secure storage');
+      }
+
+      setPreferences(loadedPreferences);
+      setIsOnboardingCompleted(onboardingCompleted);
 
     } catch (error) {
       console.error('❌ Error loading initial data:', error);
@@ -83,71 +156,95 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const clearAuthData = async () => {
+  const handleSecurityBreach = async () => {
     try {
-      const keys = [AUTH_KEYS.TOKEN, AUTH_KEYS.USER_DATA];
-      await AsyncStorage.multiRemove(keys);
-      console.log('🧹 Auth data cleared');
+      // Clean all secure data due to security breach
+      await Promise.allSettled([
+        KeychainService.cleanAllSecureData(),
+        AsyncStorage.multiRemove([
+          STORAGE_KEYS.USER_DATA,
+          STORAGE_KEYS.THEME,
+          STORAGE_KEYS.NOTIFICATION,
+          STORAGE_KEYS.LANGUAGE,
+        ]),
+      ]);
+      
+      // Reset state
+      setUser(null);
+      setIsAuthenticated(false);
+      setPreferences(defaultPreferences);
+    } catch (cleanupError) {
+      console.error('❌ Error during security breach cleanup:', cleanupError);
+    }
+  };
+
+  const updatePreferences = async (newPreferences: Partial<AppPreferences>): Promise<void> => {
+    try {
+      const updatedPreferences = { ...preferences, ...newPreferences };
+      setPreferences(updatedPreferences);
+
+      // Save to AsyncStorage
+      await AsyncStorage.multiSet([
+        [STORAGE_KEYS.THEME, updatedPreferences.theme],
+        [STORAGE_KEYS.NOTIFICATION, JSON.stringify(updatedPreferences.notifications)],
+        [STORAGE_KEYS.LANGUAGE, updatedPreferences.language],
+      ]);
+
+      console.log('✅ Preferences updated and saved');
     } catch (error) {
-      console.error('❌ Error clearing auth data:', error);
+      console.error('❌ Error updating preferences:', error);
+      throw error;
     }
   };
 
   const login = async (username: string, password: string): Promise<boolean> => {
-  try {
-    console.log('🔐 Attempting login with API...');
-    
-    // HAPUS expiresInMins dari sini
-    const response = await apiMethods.login({
-      username,
-      password,
-      // expiresInMins: 30, // HAPUS BARIS INI
-    });
-
-    const data = response.data;
-    
-    if (data.success && data.token) {
-      // Buat user data dari response API
-      const userData: User = {
-        id: data.user?.id?.toString() || 'U123',
-        name: data.user?.firstName + ' ' + data.user?.lastName || 'Demo User',
-        email: data.user?.email || `${username}@demo.com`,
-        avatar: data.user?.image || 'https://static.vecteezy.com/system/resources/thumbnails/032/176/191/small/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg'
-      };
+    try {
+      console.log('🔐 Attempting login with API...');
       
-      // Simpan token dan user data ke AsyncStorage
-      await AsyncStorage.multiSet([
-        [AUTH_KEYS.TOKEN, data.token],
-        [AUTH_KEYS.USER_DATA, JSON.stringify(userData)]
-      ]);
+      const response = await apiMethods.login({ username, password });
+      const data = response.data;
       
-      setUser(userData);
-      setIsAuthenticated(true);
-      console.log('✅ Login successful, data saved to storage');
-      return true;
-    } else {
-      console.log('❌ Login failed - no token received');
-      return false;
+      if (data.success && data.token) {
+        // Create user data from API response
+        const userData: User = {
+          id: data.user?.id?.toString() || 'U123',
+          name: data.user?.firstName + ' ' + data.user?.lastName || 'Demo User',
+          email: data.user?.email || `${username}@demo.com`,
+          avatar: data.user?.image || 'https://static.vecteezy.com/system/resources/thumbnails/032/176/191/small/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg'
+        };
+        
+        // Save token to Keychain (secure storage)
+        await KeychainService.saveAuthToken(data.token);
+        
+        // Save user data to AsyncStorage (non-sensitive)
+        await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+        
+        setUser(userData);
+        setIsAuthenticated(true);
+        console.log('✅ Login successful, secure token saved to Keychain');
+        return true;
+      } else {
+        console.log('❌ Login failed - no token received');
+        return false;
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Login API error:', error.message);
+      
+      // Fallback to mock login for development
+      console.log('🔄 Using fallback mock login...');
+      return await mockLogin(username, password);
     }
-    
-  } catch (error: any) {
-    console.error('❌ Login API error:', error.message);
-    
-    // Fallback ke mock login untuk development
-    console.log('🔄 Using fallback mock login...');
-    return await mockLogin(username, password);
-  }
-};
+  };
 
   const mockLogin = async (username: string, password: string): Promise<boolean> => {
     return new Promise((resolve) => {
       setTimeout(async () => {
-        // Valid credentials untuk fallback
         const validCredentials = [
           { username: 'kminchelle', password: '0lelplR' },
           { username: 'emilys', password: 'emilyspass' },
           { username: 'atuny0', password: '9uQFF1Lh' },
-          { username: 'demo', password: 'demo' } // Simple fallback
+          { username: 'demo', password: 'demo' }
         ];
 
         const isValid = validCredentials.some(
@@ -165,15 +262,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           };
           
           try {
-            const token = `mock_token_${Date.now()}`;
-            await AsyncStorage.multiSet([
-              [AUTH_KEYS.TOKEN, token],
-              [AUTH_KEYS.USER_DATA, JSON.stringify(userData)]
-            ]);
+            const mockToken = `mock_token_${Date.now()}`;
+            
+            // Save to Keychain
+            await KeychainService.saveAuthToken(mockToken);
+            
+            // Save to AsyncStorage
+            await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
             
             setUser(userData);
             setIsAuthenticated(true);
-            console.log('✅ Mock login successful');
+            console.log('✅ Mock login successful, token saved to Keychain');
             resolve(true);
           } catch (error) {
             console.error('❌ Error saving mock login data:', error);
@@ -189,36 +288,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async (): Promise<void> => {
     try {
-      console.log('🚪 Logging out...');
+      console.log('🚪 Starting secure logout...');
       
-      // MultiRemove untuk hapus semua data sensitif sekaligus
-      const keysToRemove = [AUTH_KEYS.TOKEN, AUTH_KEYS.USER_DATA];
+      // Clean secure data from Keychain FIRST
+      await KeychainService.cleanAllSecureData();
+      
+      // Then clean non-sensitive data from AsyncStorage
+      const keysToRemove = [
+        STORAGE_KEYS.USER_DATA,
+        STORAGE_KEYS.THEME,
+        STORAGE_KEYS.NOTIFICATION,
+        STORAGE_KEYS.LANGUAGE,
+      ];
       await AsyncStorage.multiRemove(keysToRemove);
       
-      console.log('✅ All auth data removed successfully');
+      console.log('✅ All data removed from secure and non-secure storage');
       
+      // Reset state only after storage is cleared
       setUser(null);
       setIsAuthenticated(false);
       
     } catch (error) {
-      console.error('❌ Error during logout:', error);
-      // Fallback: clear state even if storage fails
+      console.error('❌ Error during secure logout:', error);
+      
+      // Fallback: clear state even if storage cleanup fails
       setUser(null);
       setIsAuthenticated(false);
+      throw error;
     }
   };
 
-  const completeOnboarding = () => setIsOnboardingCompleted(true);
+  const completeOnboarding = async () => {
+    setIsOnboardingCompleted(true);
+    await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING, 'true');
+  };
 
   return (
     <AuthContext.Provider value={{
       isAuthenticated,
       isOnboardingCompleted,
       user,
+      preferences,
       login,
       logout,
       completeOnboarding,
       isLoading,
+      updatePreferences,
     }}>
       {children}
     </AuthContext.Provider>
