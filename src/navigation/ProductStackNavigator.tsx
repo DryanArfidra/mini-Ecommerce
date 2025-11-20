@@ -1,4 +1,3 @@
-// src/navigation/ProductStackNavigator.tsx
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, TouchableOpacity } from 'react-native';
@@ -21,19 +20,22 @@ const Stack = createNativeStackNavigator<ProductStackParamList>();
 
 const ProductStackNavigator: React.FC = () => {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#2196F3',
+        },
+        headerTintColor: 'white',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
       <Stack.Screen 
         name="ProductList" 
         component={ProductListScreen}
         options={({ navigation }: any) => ({
           title: 'All Products',
-          headerStyle: {
-            backgroundColor: '#2196F3',
-          },
-          headerTintColor: 'white',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
           headerRight: () => (
             <TouchableOpacity 
               onPress={() => navigation.navigate('AddProduct')}
@@ -48,14 +50,7 @@ const ProductStackNavigator: React.FC = () => {
         name="ProductDetail" 
         component={ProductDetailScreen}
         options={({ route }: any) => ({
-          title: route.params?.productTitle || 'Product Details', 
-          headerStyle: {
-            backgroundColor: '#2196F3',
-          },
-          headerTintColor: 'white',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          title: route.params?.productTitle || 'Product Details',
         })}
       />
       <Stack.Screen 
@@ -63,13 +58,6 @@ const ProductStackNavigator: React.FC = () => {
         component={CheckoutScreen}
         options={{
           title: 'Checkout',
-          headerStyle: {
-            backgroundColor: '#2196F3',
-          },
-          headerTintColor: 'white',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
         }}
       />
       <Stack.Screen 
@@ -77,13 +65,6 @@ const ProductStackNavigator: React.FC = () => {
         component={AddProductScreen}
         options={{
           title: 'Tambah Produk',
-          headerStyle: {
-            backgroundColor: '#2196F3',
-          },
-          headerTintColor: 'white',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
         }}
       />
     </Stack.Navigator>

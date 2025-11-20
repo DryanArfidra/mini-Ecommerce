@@ -9,9 +9,14 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useRoute } from '@react-navigation/native'; 
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import apiClient from '../services/apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
+
+type CartScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface CartTotal {
   total: number;
@@ -31,13 +36,33 @@ interface CartItem {
 const CART_STORAGE_KEY = 'user_cart';
 
 const CartScreen: React.FC = () => {
+  const navigation = useNavigation<CartScreenNavigationProp>();
+  const route = useRoute(); 
+  
   const [cartTotal, setCartTotal] = useState<CartTotal | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [pollingCount, setPollingCount] = useState(0);
+  const [deepLinkOpened, setDeepLinkOpened] = useState(false); 
   const networkState = useNetworkStatus();
 
-  // Load cart from AsyncStorage on component mount
+  useEffect(() => {
+    const checkDeepLink = () => {
+      console.log('🛒 CartScreen opened via deep link');
+      setDeepLinkOpened(true);
+      
+      Alert.alert(
+        'Deep Link Success',
+        'Cart screen opened via deep link!',
+        [{ text: 'OK' }]
+      );
+    };
+
+    if (route.params) {
+      checkDeepLink();
+    }
+  }, [route.params]);
+
   useEffect(() => {
     loadCartFromStorage();
   }, []);
@@ -69,7 +94,6 @@ const CartScreen: React.FC = () => {
     } catch (error: any) {
       console.error('❌ Error saving cart:', error);
       
-      // Handle Quota Exceeded error
       if (error?.message?.includes('QuotaExceededError') || error?.message?.includes('exceeded')) {
         Alert.alert(
           'Storage Full',
@@ -84,21 +108,17 @@ const CartScreen: React.FC = () => {
     try {
       const updatedItems = cartItems.map(item => 
         item.id === itemId ? { ...item, quantity: newQuantity } : item
-      ).filter(item => item.quantity > 0); // Remove if quantity is 0
+      ).filter(item => item.quantity > 0);
 
       setCartItems(updatedItems);
       calculateLocalTotal(updatedItems);
 
-      // Use mergeItem for efficient partial updates
-      const mergeData = {
-        [itemId]: { quantity: newQuantity }
-      };
-
       try {
-        await AsyncStorage.mergeItem(CART_STORAGE_KEY, JSON.stringify(mergeData));
+        await AsyncStorage.mergeItem(CART_STORAGE_KEY, JSON.stringify({
+          items: updatedItems
+        }));
         console.log('🔄 Cart item updated with mergeItem');
       } catch (mergeError) {
-        // Fallback to full save if merge fails
         console.log('🔄 Fallback to full cart save');
         await saveCartToStorage(updatedItems);
       }
@@ -130,7 +150,7 @@ const CartScreen: React.FC = () => {
     
     setCartTotal({
       total,
-      discountedTotal: total * 0.9, // 10% discount for demo
+      discountedTotal: total * 0.9,
       totalProducts: items.length,
       totalQuantity,
     });
@@ -148,11 +168,15 @@ const CartScreen: React.FC = () => {
     }
   };
 
+  const navigateToProducts = () => {
+    navigation.navigate('Main' as any); // Navigate ke main tab
+  };
+
   const fetchCartTotal = async () => {
     try {
       console.log(`🛒 Fetching cart total (poll #${pollingCount + 1})`);
       
-      const response = await apiClient.get('/carts/1'); // Using demo cart ID
+      const response = await apiClient.get('/carts/1');
       const cartData = response.data;
       
       const totalData: CartTotal = {
@@ -182,7 +206,7 @@ const CartScreen: React.FC = () => {
       
       intervalId = setInterval(() => {
         fetchCartTotal();
-      }, 15000); 
+      }, 15000);
     } else {
       console.log('📵 Polling disabled - cellular network detected');
     }
@@ -193,7 +217,7 @@ const CartScreen: React.FC = () => {
         clearInterval(intervalId);
       }
     };
-  }, [networkState.type]); 
+  }, [networkState.type]);
 
   const getNetworkStatusText = () => {
     if (networkState.type === 'cellular') {
@@ -216,9 +240,20 @@ const CartScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
+        {/* Deep Link Banner */}
+        {deepLinkOpened && (
+          <View style={styles.deepLinkBanner}>
+            <Text style={styles.deepLinkBannerText}>
+              🎉 Cart opened via Deep Link!
+            </Text>
+          </View>
+        )}
+
         <View style={styles.header}>
           <Text style={styles.title}>Shopping Cart</Text>
-          <Text style={styles.subtitle}>Your cart summary</Text>
+          <Text style={styles.subtitle}>
+            {deepLinkOpened ? 'Opened via deep link 🎯' : 'Your cart summary'}
+          </Text>
         </View>
 
         {/* Network Status */}
@@ -242,7 +277,27 @@ const CartScreen: React.FC = () => {
           <TouchableOpacity style={[styles.actionButton, styles.clearButton]} onPress={clearCart}>
             <Text style={styles.actionButtonText}>Clear Cart</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionButton, styles.shopButton]} onPress={navigateToProducts}>
+            <Text style={styles.actionButtonText}>Continue Shopping</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Empty State */}
+        {cartItems.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateIcon}>🛒</Text>
+            <Text style={styles.emptyStateTitle}>Your Cart is Empty</Text>
+            <Text style={styles.emptyStateText}>
+              {deepLinkOpened 
+                ? 'Add some products to get started!' 
+                : 'Start shopping to add items to your cart'
+              }
+            </Text>
+            <TouchableOpacity style={styles.emptyStateButton} onPress={navigateToProducts}>
+              <Text style={styles.emptyStateButtonText}>Browse Products</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Local Cart Items */}
         {cartItems.length > 0 && (
@@ -253,6 +308,7 @@ const CartScreen: React.FC = () => {
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{item.name}</Text>
                   <Text style={styles.itemPrice}>${item.price} x {item.quantity}</Text>
+                  <Text style={styles.itemTotal}>Total: ${(item.price * item.quantity).toFixed(2)}</Text>
                 </View>
                 <View style={styles.quantityControls}>
                   <TouchableOpacity 
@@ -275,7 +331,7 @@ const CartScreen: React.FC = () => {
         )}
 
         {/* Cart Summary */}
-        {cartTotal && (
+        {cartTotal && cartItems.length > 0 && (
           <View style={styles.cartSummary}>
             <Text style={styles.summaryTitle}>Cart Summary</Text>
             
@@ -291,13 +347,13 @@ const CartScreen: React.FC = () => {
             
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Original Total:</Text>
-              <Text style={styles.summaryValue}>${cartTotal.total}</Text>
+              <Text style={styles.summaryValue}>${cartTotal.total.toFixed(2)}</Text>
             </View>
             
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Discounted Total:</Text>
               <Text style={[styles.summaryValue, styles.discountedPrice]}>
-                ${cartTotal.discountedTotal}
+                ${cartTotal.discountedTotal.toFixed(2)}
               </Text>
             </View>
 
@@ -306,20 +362,26 @@ const CartScreen: React.FC = () => {
                 You save: ${(cartTotal.total - cartTotal.discountedTotal).toFixed(2)}
               </Text>
             </View>
+
+            <TouchableOpacity style={styles.checkoutButton}>
+              <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* Storage Info */}
+        {/* Deep Link Info */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Cart Storage Information</Text>
-          <Text style={styles.infoText}>
-            • Cart data persisted locally
+          <Text style={styles.infoTitle}>
+            {deepLinkOpened ? '🎯 Deep Link Activated' : 'Cart Information'}
           </Text>
           <Text style={styles.infoText}>
-            • Uses mergeItem for efficient updates
+            • {deepLinkOpened ? 'Opened via ecommerceapp://keranjang' : 'Cart data persisted locally'}
           </Text>
           <Text style={styles.infoText}>
-            • Handles storage quota errors
+            • {deepLinkOpened ? 'Warm start handled successfully' : 'Uses efficient storage updates'}
+          </Text>
+          <Text style={styles.infoText}>
+            • Test deep link: ecommerceapp://keranjang
           </Text>
           <Text style={styles.infoText}>
             • Last updated: {new Date().toLocaleTimeString()}
@@ -347,6 +409,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#666',
+  },
+  // Deep Link Banner
+  deepLinkBanner: {
+    backgroundColor: '#4CAF50',
+    padding: 12,
+    margin: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  deepLinkBannerText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   header: {
     backgroundColor: 'white',
@@ -392,11 +467,13 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     padding: 16,
     gap: 12,
   },
   actionButton: {
     flex: 1,
+    minWidth: '30%',
     backgroundColor: '#2196F3',
     padding: 12,
     borderRadius: 8,
@@ -405,9 +482,48 @@ const styles = StyleSheet.create({
   clearButton: {
     backgroundColor: '#f44336',
   },
+  shopButton: {
+    backgroundColor: '#4CAF50',
+  },
   actionButtonText: {
     color: 'white',
     fontWeight: '600',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  // Empty State
+  emptyState: {
+    backgroundColor: 'white',
+    margin: 16,
+    padding: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  emptyStateIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  emptyStateButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  emptyStateButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   localCartSection: {
     backgroundColor: 'white',
@@ -425,7 +541,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -440,6 +556,12 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontSize: 14,
     color: '#666',
+    marginTop: 2,
+  },
+  itemTotal: {
+    fontSize: 14,
+    color: '#2196F3',
+    fontWeight: '600',
     marginTop: 2,
   },
   quantityControls: {
@@ -513,6 +635,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#4CAF50',
+  },
+  checkoutButton: {
+    backgroundColor: '#2196F3',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  checkoutButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   infoCard: {
     backgroundColor: '#E3F2FD',

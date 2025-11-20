@@ -6,6 +6,33 @@ import AppNavigator from './src/navigation/AppNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { initializeApiKey } from './src/services/apiClient';
 
+// Konfigurasi Deep Linking
+const linking = {
+  prefixes: ['ecommerceapp://', 'https://yourapp.com'],
+  config: {
+    screens: {
+      Main: {
+        screens: {
+          HomeStack: {
+            screens: {
+              Home: 'home',
+            }
+          },
+          ProductsStack: {
+            screens: {
+              ProductList: 'produk',
+              ProductDetail: 'produk/:id',
+            }
+          },
+          Profile: 'profil/:userId',
+          Cart: 'keranjang', // Tambahkan cart
+        }
+      },
+      Login: 'login',
+    },
+  },
+};
+
 const App: React.FC = () => {
   const [appKey, setAppKey] = useState(0);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -31,7 +58,7 @@ const App: React.FC = () => {
   };
 
   if (isInitializing) {
-    return null; // Or a splash screen
+    return null;
   }
 
   return (
@@ -39,7 +66,7 @@ const App: React.FC = () => {
       <SafeAreaProvider>
         <NetworkStatusProvider>
           <AuthProvider>
-            <AppNavigator key={appKey} />
+            <AppNavigator key={appKey} linking={linking} />
           </AuthProvider>
         </NetworkStatusProvider>
       </SafeAreaProvider>

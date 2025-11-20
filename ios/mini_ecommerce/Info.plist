@@ -25,6 +25,17 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.yourapp.ecommerce</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ecommerceapp</string>
+			</array>
+		</dict>
+	</array>
 	<dict>
 	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
 		<key>NSAllowsArbitraryLoads</key>

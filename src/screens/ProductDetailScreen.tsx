@@ -1,4 +1,3 @@
-// src/screens/ProductDetailScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProductStackParamList } from '../navigation/ProductStackNavigator';
 import { apiMethods } from '../services/apiClient';
 import Toast from 'react-native-toast-message';
+import { useAuth } from '../context/AuthContext';
 
 type ProductDetailScreenRouteProp = RouteProp<ProductStackParamList, 'ProductDetail'>;
 type ProductDetailScreenNavigationProp = NativeStackNavigationProp<ProductStackParamList, 'ProductDetail'>;
@@ -33,7 +33,6 @@ interface Product {
   images: string[];
 }
 
-// Fallback data untuk graceful degradation
 const FALLBACK_PRODUCT: Product = {
   id: 0,
   title: 'Product Information',
@@ -51,6 +50,8 @@ const FALLBACK_PRODUCT: Product = {
 const ProductDetailScreen: React.FC = () => {
   const route = useRoute<ProductDetailScreenRouteProp>();
   const navigation = useNavigation<ProductDetailScreenNavigationProp>();
+  const { isAuthenticated } = useAuth();
+  
   const { productId } = route.params;
   
   const [product, setProduct] = useState<Product | null>(null);
@@ -59,6 +60,14 @@ const ProductDetailScreen: React.FC = () => {
   const [usingFallback, setUsingFallback] = useState(false);
 
   useEffect(() => {
+    // Validasi productId untuk deep linking
+    if (!productId || isNaN(Number(productId))) {
+      setError('Invalid product ID');
+      setLoading(false);
+      Alert.alert('Error', 'Invalid product ID from deep link');
+      return;
+    }
+    
     fetchProductDetail();
   }, [productId]);
 
@@ -70,7 +79,7 @@ const ProductDetailScreen: React.FC = () => {
 
       console.log(`🟡 Fetching product details for ID: ${productId}`);
       
-      const response = await apiMethods.getProduct(productId);
+      const response = await apiMethods.getProduct(parseInt(productId));
       const productData: Product = response.data;
       
       console.log('🟢 Product details fetched successfully');
@@ -83,19 +92,10 @@ const ProductDetailScreen: React.FC = () => {
         productId,
       });
 
-      // Log specific status codes
-      if (err.response?.status === 404) {
-        console.log('📝 HTTP 404 - Product not found');
-      } else if (err.response?.status === 500) {
-        console.log('📝 HTTP 500 - Internal server error');
-      }
-
-      // Graceful degradation: use fallback data for 404 or 500 errors
       if (err.response?.status === 404 || err.response?.status === 500) {
         setProduct(FALLBACK_PRODUCT);
         setUsingFallback(true);
         
-        // Show non-blocking toast notification
         Toast.show({
           type: 'info',
           text1: 'Informasi Produk',
@@ -116,6 +116,18 @@ const ProductDetailScreen: React.FC = () => {
   };
 
   const handleCheckout = () => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Login Required',
+        'Please login to add products to cart',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Login', onPress: () => navigation.navigate('Login' as any) }
+        ]
+      );
+      return;
+    }
+
     if (product) {
       navigation.navigate('Checkout', { productId: product.id.toString() });
     }
@@ -147,7 +159,12 @@ const ProductDetailScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Fallback Indicator */}
+      {/* Debug info untuk deep linking */}
+      <View style={styles.debugInfo}>
+        <Text style={styles.debugText}>Product ID from Deep Link: {productId}</Text>
+        <Text style={styles.debugText}>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</Text>
+      </View>
+
       {usingFallback && (
         <View style={styles.fallbackBanner}>
           <Text style={styles.fallbackText}>
@@ -236,7 +253,6 @@ const ProductDetailScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Toast Component */}
       <Toast />
     </ScrollView>
   );
@@ -267,6 +283,19 @@ const styles = StyleSheet.create({
     color: '#d32f2f',
     textAlign: 'center',
     marginBottom: 20,
+  },
+  debugInfo: {
+    backgroundColor: '#f8f9fa',
+    padding: 8,
+    margin: 16,
+    borderRadius: 4,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2196F3',
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'monospace',
   },
   fallbackBanner: {
     backgroundColor: '#FFF3E0',

@@ -4,10 +4,12 @@ import { View, Text } from 'react-native';
 import HomeStackNavigator from './HomeStackNavigator';
 import ProductStackNavigator from './ProductStackNavigator'; 
 import ProfileScreen from '../screens/ProfileScreen';
+import CartScreen from '../screens/CartScreen';
 
 export type MainTabParamList = {
   HomeStack: undefined;
   ProductsStack: undefined; 
+  Cart: undefined;
   Profile: undefined;
 };
 
@@ -49,7 +51,7 @@ const MainTabNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="🏠" label="" />
+            <TabIcon focused={focused} icon="🏠" label="Home" />
           ),
         }}
       />
@@ -59,7 +61,17 @@ const MainTabNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Products',
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="🛍️" label="" />
+            <TabIcon focused={focused} icon="🛍️" label="Products" />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Cart" 
+        component={CartScreen}
+        options={{
+          tabBarLabel: 'Cart',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} icon="🛒" label="Cart" />
           ),
         }}
       />
@@ -69,7 +81,7 @@ const MainTabNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="👤" label="" />
+            <TabIcon focused={focused} icon="👤" label="Profile" />
           ),
         }}
       />

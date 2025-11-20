@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator'; 
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -17,10 +17,41 @@ import { useAuth } from '../context/AuthContext';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+interface ProfileScreenParams {
+  userId?: string;
+}
+
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
+  const route = useRoute();
   const { isAuthenticated, user, logout } = useAuth();
   
+  const params = route.params as ProfileScreenParams;
+  const linkedUserId = params?.userId;
+
+  useEffect(() => {
+    // Validasi parameter userId dari deep linking
+    if (linkedUserId) {
+      if (!isValidUserId(linkedUserId)) {
+        Alert.alert(
+          'Invalid User ID',
+          'The user ID in the link is not valid. Showing your profile instead.',
+          [{ text: 'OK' }]
+        );
+      } else if (isAuthenticated && user?.id !== linkedUserId) {
+        Alert.alert(
+          'Different User',
+          `This link is for user ${linkedUserId}, but you're logged in as ${user?.id}. Showing your profile.`,
+          [{ text: 'OK' }]
+        );
+      }
+    }
+  }, [linkedUserId, isAuthenticated, user]);
+
+  const isValidUserId = (userId: string): boolean => {
+    return /^[a-zA-Z0-9]{3,}$/.test(userId);
+  };
+
   const handleLoginPress = () => {
     navigation.navigate('Login');
   };
@@ -52,6 +83,13 @@ const ProfileScreen: React.FC = () => {
           <Text style={styles.authGuardText}>
             Anda perlu login untuk mengakses halaman profil
           </Text>
+          {linkedUserId && (
+            <View style={styles.deepLinkInfo}>
+              <Text style={styles.deepLinkText}>
+                Deep Link User ID: {linkedUserId}
+              </Text>
+            </View>
+          )}
           <TouchableOpacity 
             style={styles.loginButton}
             onPress={handleLoginPress}
@@ -67,20 +105,36 @@ const ProfileScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
+        {linkedUserId && (
+          <View style={styles.deepLinkBanner}>
+            <Icon name="link" size={16} color="#1976d2" />
+            <Text style={styles.deepLinkBannerText}>
+              Opened via deep link for user: {linkedUserId}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
             <Image
-              source={{ uri: user?.avatar }}
+              source={{ uri: user?.avatar || 'https://via.placeholder.com/100' }}
               style={styles.avatar}
             />
           </View>
-          <Text style={styles.name}>{user?.name}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
+          <Text style={styles.name}>{user?.name || 'User Name'}</Text>
+          <Text style={styles.email}>{user?.email || 'user@example.com'}</Text>
           
           <View style={styles.userIdContainer}>
             <Text style={styles.userIdLabel}>User ID:</Text>
-            <Text style={styles.userIdValue}>{user?.id}</Text>
+            <Text style={styles.userIdValue}>{user?.id || 'N/A'}</Text>
           </View>
+
+          {linkedUserId && linkedUserId !== user?.id && (
+            <View style={styles.linkedUserIdContainer}>
+              <Text style={styles.linkedUserIdLabel}>Linked User ID:</Text>
+              <Text style={styles.linkedUserIdValue}>{linkedUserId}</Text>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -117,6 +171,20 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 30,
   },
+  deepLinkInfo: {
+    backgroundColor: '#e3f2fd',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  deepLinkText: {
+    fontSize: 14,
+    color: '#1976d2',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   loginButton: {
     backgroundColor: '#2196F3',
     flexDirection: 'row',
@@ -133,6 +201,22 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  deepLinkBanner: {
+    backgroundColor: '#e8f5e8',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    margin: 16,
+    borderRadius: 8,
+    gap: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  deepLinkBannerText: {
+    fontSize: 14,
+    color: '#2e7d32',
+    fontWeight: '500',
   },
   header: {
     backgroundColor: 'white',
@@ -178,6 +262,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#1976d2',
+  },
+  linkedUserIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff3e0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  linkedUserIdLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f57c00',
+    marginRight: 6,
+  },
+  linkedUserIdValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#f57c00',
   },
   logoutButton: {
     backgroundColor: '#f44336',
