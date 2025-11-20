@@ -11,13 +11,14 @@ import {
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ProductStackParamList } from '../navigation/ProductStackNavigator';
+import { RootStackParamList } from '../navigation/AppNavigator';
 import { apiMethods } from '../services/apiClient';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../context/AuthContext';
+import CacheUtils from '../utils/cacheUtils';
 
-type ProductDetailScreenRouteProp = RouteProp<ProductStackParamList, 'ProductDetail'>;
-type ProductDetailScreenNavigationProp = NativeStackNavigationProp<ProductStackParamList, 'ProductDetail'>;
+type ProductDetailScreenRouteProp = RouteProp<RootStackParamList, 'ProductDetail'>;
+type ProductDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ProductDetail'>;
 
 interface Product {
   id: number;
@@ -58,6 +59,7 @@ const ProductDetailScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usingFallback, setUsingFallback] = useState(false);
+  const [usingCache, setUsingCache] = useState(false);
 
   useEffect(() => {
     // Validasi productId untuk deep linking
@@ -68,21 +70,36 @@ const ProductDetailScreen: React.FC = () => {
       return;
     }
     
-    fetchProductDetail();
+    loadProductDetail();
   }, [productId]);
 
-  const fetchProductDetail = async () => {
+  const loadProductDetail = async () => {
     try {
       setLoading(true);
       setError(null);
       setUsingFallback(false);
+      setUsingCache(false);
 
-      console.log(`🟡 Fetching product details for ID: ${productId}`);
+      console.log(`🟡 Loading product details for ID: ${productId}`);
       
+      // Cek cache terlebih dahulu
+      const cachedProduct = await CacheUtils.getProductDetail(parseInt(productId));
+      if (cachedProduct) {
+        console.log('✅ Using cached product data');
+        setProduct(cachedProduct);
+        setUsingCache(true);
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔄 No cache found, fetching from API...');
       const response = await apiMethods.getProduct(parseInt(productId));
       const productData: Product = response.data;
       
-      console.log('🟢 Product details fetched successfully');
+      // Simpan ke cache
+      await CacheUtils.setProductDetail(parseInt(productId), productData);
+      
+      console.log('✅ Product details fetched and cached successfully');
       setProduct(productData);
       
     } catch (err: any) {
@@ -92,19 +109,24 @@ const ProductDetailScreen: React.FC = () => {
         productId,
       });
 
-      if (err.response?.status === 404 || err.response?.status === 500) {
+      // Coba gunakan cache yang mungkin ada meskipun expired
+      const cachedProduct = await CacheUtils.getProductDetail(parseInt(productId));
+      if (cachedProduct) {
+        console.log('🔄 Using expired cache as fallback');
+        setProduct(cachedProduct);
+        setUsingFallback(true);
+      } else if (err.response?.status === 404 || err.response?.status === 500) {
         setProduct(FALLBACK_PRODUCT);
         setUsingFallback(true);
         
         Toast.show({
           type: 'info',
           text1: 'Informasi Produk',
-          text2: 'Gagal memuat data terbaru. Menampilkan versi arsip.',
+          text2: 'Gagal memuat data terbaru. Menampilkan versi dasar.',
           visibilityTime: 4000,
-          position: 'bottom',
         });
       } else {
-        setError(err.userMessage || 'Failed to load product details');
+        setError(err.message || 'Failed to load product details');
       }
     } finally {
       setLoading(false);
@@ -112,7 +134,7 @@ const ProductDetailScreen: React.FC = () => {
   };
 
   const handleRetry = () => {
-    fetchProductDetail();
+    loadProductDetail();
   };
 
   const handleCheckout = () => {
@@ -122,7 +144,12 @@ const ProductDetailScreen: React.FC = () => {
         'Please login to add products to cart',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Login', onPress: () => navigation.navigate('Login' as any) }
+          { 
+            text: 'Login', 
+            onPress: () => navigation.navigate('Login', { 
+              callback: `miniecom://product/${productId}`
+            })
+          }
         ]
       );
       return;
@@ -140,7 +167,9 @@ const ProductDetailScreen: React.FC = () => {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
-        <Text style={styles.loadingText}>Loading product details...</Text>
+        <Text style={styles.loadingText}>
+          {usingCache ? 'Loading cached data...' : 'Loading product details...'}
+        </Text>
       </View>
     );
   }
@@ -161,14 +190,20 @@ const ProductDetailScreen: React.FC = () => {
     <ScrollView style={styles.container}>
       {/* Debug info untuk deep linking */}
       <View style={styles.debugInfo}>
-        <Text style={styles.debugText}>Product ID from Deep Link: {productId}</Text>
+        <Text style={styles.debugText}>Product ID: {productId}</Text>
+        <Text style={styles.debugText}>
+          Source: {usingCache ? 'Cache' : usingFallback ? 'Fallback' : 'API'}
+        </Text>
         <Text style={styles.debugText}>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</Text>
       </View>
 
-      {usingFallback && (
-        <View style={styles.fallbackBanner}>
-          <Text style={styles.fallbackText}>
-            ⚠️ Menampilkan informasi produk dasar
+      {(usingFallback || usingCache) && (
+        <View style={[
+          styles.infoBanner,
+          usingCache ? styles.cacheBanner : styles.fallbackBanner
+        ]}>
+          <Text style={styles.infoBannerText}>
+            {usingCache ? '⚡ Cached Data' : '⚠️ Basic Product Information'}
           </Text>
         </View>
       )}
@@ -183,6 +218,9 @@ const ProductDetailScreen: React.FC = () => {
         <View style={styles.badgeContainer}>
           {usingFallback && (
             <Text style={[styles.badge, styles.fallbackBadge]}>Offline Mode</Text>
+          )}
+          {usingCache && (
+            <Text style={[styles.badge, styles.cacheBadge]}>Cached</Text>
           )}
           {displayProduct.discountPercentage > 0 && (
             <Text style={[styles.badge, styles.discountBadge]}>
@@ -233,7 +271,10 @@ const ProductDetailScreen: React.FC = () => {
 
         {!usingFallback && (
           <TouchableOpacity 
-            style={styles.buyButton}
+            style={[
+              styles.buyButton,
+              displayProduct.stock === 0 && styles.disabledButton
+            ]}
             onPress={handleCheckout}
             disabled={displayProduct.stock === 0}
           >
@@ -243,7 +284,7 @@ const ProductDetailScreen: React.FC = () => {
           </TouchableOpacity>
         )}
 
-        {usingFallback && (
+        {(usingFallback || error) && (
           <TouchableOpacity 
             style={styles.retryButton}
             onPress={handleRetry}
@@ -297,16 +338,21 @@ const styles = StyleSheet.create({
     color: '#666',
     fontFamily: 'monospace',
   },
-  fallbackBanner: {
-    backgroundColor: '#FFF3E0',
+  infoBanner: {
     padding: 12,
     margin: 16,
     borderRadius: 8,
     borderLeftWidth: 4,
+  },
+  cacheBanner: {
+    backgroundColor: '#E8F5E8',
+    borderLeftColor: '#4CAF50',
+  },
+  fallbackBanner: {
+    backgroundColor: '#FFF3E0',
     borderLeftColor: '#FF9800',
   },
-  fallbackText: {
-    color: '#E65100',
+  infoBannerText: {
     fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
@@ -342,12 +388,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF9800',
     color: 'white',
   },
+  cacheBadge: {
+    backgroundColor: '#4CAF50',
+    color: 'white',
+  },
   discountBadge: {
     backgroundColor: '#F44336',
     color: 'white',
   },
   popularBadge: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#2196F3',
     color: 'white',
   },
   name: {
@@ -428,6 +478,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 10,
+  },
+  disabledButton: {
+    backgroundColor: '#cccccc',
   },
   buyButtonText: {
     color: 'white',

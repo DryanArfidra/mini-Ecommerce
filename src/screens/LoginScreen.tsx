@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,19 +12,31 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuth } from '../context/AuthContext';
+import { useDeepLinking } from '../utils/deepLinkingUtils';
 
-type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
+type LoginScreenRouteProp = RouteProp<RootStackParamList, 'Login'>;
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
+  const route = useRoute<LoginScreenRouteProp>();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { executePendingAction } = useDeepLinking();
+
+  // Handle callback setelah login sukses
+  useEffect(() => {
+    // Jika ada callback parameter, kita akan handle setelah login sukses
+    if (route.params?.callback) {
+      console.log('🔗 Login with callback:', route.params.callback);
+    }
+  }, [route.params]);
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -41,8 +53,20 @@ const LoginScreen: React.FC = () => {
       
       if (success) {
         console.log('✅ Login successful!');
-        Alert.alert('Success', 'Login successful!');
-        // Navigation akan otomatis handled oleh AppNavigator karena state isAuthenticated berubah
+        
+        // Cek apakah ada pending deep link action
+        const hadPendingAction = await executePendingAction();
+        
+        if (!hadPendingAction && route.params?.callback) {
+          // Handle callback dari route params
+          const { handleDeepLink } = useDeepLinking();
+          handleDeepLink(route.params.callback);
+        }
+        
+        if (!hadPendingAction && !route.params?.callback) {
+          Alert.alert('Success', 'Login successful!');
+        }
+        
       } else {
         Alert.alert('Error', 'Invalid username or password');
       }

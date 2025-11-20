@@ -6,9 +6,9 @@ import AppNavigator from './src/navigation/AppNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { initializeApiKey } from './src/services/apiClient';
 
-// Konfigurasi Deep Linking
+// Enhanced Deep Linking Configuration
 const linking = {
-  prefixes: ['ecommerceapp://', 'https://yourapp.com'],
+  prefixes: ['miniecom://', 'ecommerceapp://', 'https://yourapp.com'],
   config: {
     screens: {
       Main: {
@@ -25,10 +25,14 @@ const linking = {
             }
           },
           Profile: 'profil/:userId',
-          Cart: 'keranjang', // Tambahkan cart
+          Cart: 'keranjang',
         }
       },
       Login: 'login',
+      // Add direct routes for deep linking
+      ProductDetail: 'product/:id',
+      Cart: 'cart',
+      Checkout: 'checkout',
     },
   },
 };

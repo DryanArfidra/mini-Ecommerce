@@ -7,16 +7,22 @@ import LoginScreen from '../screens/LoginScreen';
 import OnboardingStack from './OnboardingStack';
 import { ActivityIndicator, View, Text } from 'react-native';
 
+// UNIFIED Root Stack Param List - Semua screen didefinisikan di sini
 export type RootStackParamList = {
   Main: undefined;
-  Login: undefined;
+  Login: { callback?: string } | undefined;
   Onboarding: undefined;
+  // Direct screens untuk deep linking
+  ProductDetail: { productId: string };
+  Cart: undefined;
+  Checkout: { productId?: string };
+  Home: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 interface AppNavigatorProps {
-  linking?: LinkingOptions<ReactNavigation.RootParamList>;
+  linking?: LinkingOptions<RootStackParamList>;
 }
 
 const AppNavigator: React.FC<AppNavigatorProps> = ({ linking }) => {
@@ -46,12 +52,6 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ linking }) => {
           <Text style={{ marginTop: 10 }}>Loading...</Text>
         </View>
       }
-      onStateChange={(state) => {
-        console.log('🔗 Navigation State Changed:', state);
-      }}
-      onUnhandledAction={(action) => {
-        console.log('⚠️ Unhandled Navigation Action:', action);
-      }}
     >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isOnboardingCompleted ? (
