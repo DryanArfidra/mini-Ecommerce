@@ -51,7 +51,7 @@ const MainTabNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="🏠" label="Home" />
+            <TabIcon focused={focused} icon="🏠" label="" />
           ),
         }}
       />
@@ -61,7 +61,7 @@ const MainTabNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Products',
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="🛍️" label="Products" />
+            <TabIcon focused={focused} icon="🛍️" label="" />
           ),
         }}
       />
@@ -71,7 +71,7 @@ const MainTabNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Cart',
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="🛒" label="Cart" />
+            <TabIcon focused={focused} icon="🛒" label="" />
           ),
         }}
       />
@@ -81,7 +81,7 @@ const MainTabNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="👤" label="Profile" />
+            <TabIcon focused={focused} icon="👤" label="" />
           ),
         }}
       />
