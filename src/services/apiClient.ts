@@ -32,8 +32,9 @@ const cacheUtils = {
         CACHE_KEYS.CATEGORIES_TIMESTAMP
       ]);
 
-      const categoriesJson = cachedData[1];
-      const timestampValue = timestamp[1];
+      // FIXED: Correct array indices - [0] untuk CATEGORIES, [1] untuk TIMESTAMP
+      const categoriesJson = cachedData[0]?.[1]; // [0][1] berarti item pertama, value
+      const timestampValue = timestamp[1]?.[1]; // [1][1] berarti item kedua, value
 
       if (categoriesJson && timestampValue) {
         const cacheTime = parseInt(timestampValue);
@@ -267,26 +268,38 @@ export const apiMethods = {
     apiClient.get(`/products/${id}`),
   
   getProductsByCategory: async (category: string) => {
-    // Cache-first strategy for categories
-    const cachedCategories = await cacheUtils.getCachedCategories();
-    if (cachedCategories) {
-      console.log('📦 Returning cached categories data');
-      return { data: cachedCategories };
+    try {
+      // Cache-first strategy for categories
+      const cachedCategories = await cacheUtils.getCachedCategories();
+      if (cachedCategories) {
+        console.log('📦 Returning cached categories data');
+        return { data: cachedCategories };
+      }
+      
+      console.log('🌐 Fetching categories from API');
+      const response = await apiClient.get(`/products/category/${category}`);
+      
+      // Cache the categories - FIXED: Handle different response formats
+      let productsToCache: any[] = [];
+      if (response.data && response.data.products) {
+        productsToCache = response.data.products;
+      } else if (Array.isArray(response.data)) {
+        productsToCache = response.data;
+      }
+      
+      if (productsToCache.length > 0) {
+        await cacheUtils.setCachedCategories(productsToCache);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Error in getProductsByCategory:', error);
+      throw error;
     }
-    
-    console.log('🌐 Fetching categories from API');
-    const response = await apiClient.get(`/products/category/${category}`);
-    
-    // Cache the categories
-    if (response.data && Array.isArray(response.data.products)) {
-      await cacheUtils.setCachedCategories(response.data.products);
-    }
-    
-    return response;
   },
   
   searchProducts: (query: string) =>
-    apiClient.get(`/products/search?q=${query}`),
+    apiClient.get(`/products/search?q=${encodeURIComponent(query)}`),
   
   getCart: (id: string | number = 1) =>
     apiClient.get(`/carts/${id}`),
@@ -319,6 +332,39 @@ export const apiMethods = {
         }
       ]
     }),
+
+  // Upload methods
+  uploadFile: async (fileData: FormData, onProgress?: (progress: number) => void) => {
+    try {
+      const response = await apiClient.post('/upload', fileData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const progress = (progressEvent.loaded / progressEvent.total) * 100;
+            onProgress(Math.round(progress));
+          }
+        },
+        timeout: 30000, // 30 second timeout untuk upload
+      });
+
+      return response;
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('Upload timeout - please check your connection');
+      }
+      
+      throw error;
+    }
+  },
+
+  // Upload KTP khusus
+  uploadKTP: async (formData: FormData) => {
+    return apiMethods.uploadFile(formData);
+  },
 
   // Cache management methods
   cacheUtils,
