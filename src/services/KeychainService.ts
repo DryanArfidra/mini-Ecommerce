@@ -1,9 +1,11 @@
 import * as Keychain from 'react-native-keychain';
+import * as LocalAuthentication from 'react-native-local-authentication';
 
 // Service names for namespace isolation
 export const KeychainServices = {
   USER_TOKEN: 'com.ecom:userToken',
   API_KEY: 'com.ecom:apiKey',
+  BIOMETRIC_CREDENTIALS: 'com.ecom:biometricCredentials',
 } as const;
 
 export interface KeychainCredentials {
@@ -12,8 +14,182 @@ export interface KeychainCredentials {
   service: string;
 }
 
+export interface BiometricConfig {
+  accessControl?: Keychain.ACCESS_CONTROL[];
+  accessible?: Keychain.ACCESSIBLE;
+}
+
 class KeychainService {
-  // Save authentication token
+  // === BIOMETRIC METHODS ===
+  
+  // Check sensor availability
+  async isSensorAvailable(): Promise<{
+    available: boolean;
+    biometryType?: string;
+    error?: string;
+  }> {
+    try {
+      const result = await LocalAuthentication.isSensorAvailable();
+      console.log('🔍 Biometric sensor check:', result);
+      return result;
+    } catch (error: any) {
+      console.error('❌ Error checking biometric sensor:', error);
+      return {
+        available: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Save credentials with biometric protection
+  async saveCredentialsWithBiometric(
+    username: string, 
+    password: string, 
+    service: string = KeychainServices.BIOMETRIC_CREDENTIALS
+  ): Promise<boolean> {
+    try {
+      console.log('🔐 Saving credentials with biometric protection...');
+      
+      const result = await Keychain.setGenericPassword(username, password, {
+        service,
+        accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
+        accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      });
+      
+      if (result === false) {
+        throw new Error('Failed to save biometric credentials');
+      }
+      
+      console.log('✅ Biometric credentials saved successfully');
+      return true;
+    } catch (error: any) {
+      console.error('❌ Error saving biometric credentials:', error);
+      
+      // Handle specific biometric errors
+      if (error.message?.includes('BIOMETRY_NOT_ENROLLED')) {
+        throw new Error('BIOMETRY_NOT_ENROLLED: User has not enrolled biometrics');
+      }
+      
+      if (error.message?.includes('BIOMETRY_NOT_AVAILABLE')) {
+        throw new Error('BIOMETRY_NOT_AVAILABLE: Biometric hardware not available');
+      }
+      
+      if (error.message?.includes('BIOMETRY_LOCKOUT')) {
+        throw new Error('BIOMETRY_LOCKOUT: Biometric sensor locked due to too many failed attempts');
+      }
+      
+      throw error;
+    }
+  }
+
+  // Get credentials with biometric prompt
+  async getCredentialsWithBiometric(
+    promptMessage: string = 'Authenticate to access your account',
+    service: string = KeychainServices.BIOMETRIC_CREDENTIALS
+  ): Promise<{ username: string; password: string } | null> {
+    try {
+      console.log('🔐 Retrieving credentials with biometric...');
+      
+      const credentials = await Keychain.getGenericPassword({
+        service,
+        authenticationPrompt: {
+          title: 'Biometric Authentication',
+          subtitle: 'Secure Access',
+          description: promptMessage,
+          cancel: 'Cancel',
+        },
+        // Remove authenticationType as it's not in GetOptions type
+      });
+      
+      if (credentials) {
+        console.log('✅ Biometric authentication successful');
+        return credentials;
+      }
+      
+      console.log('ℹ️ No biometric credentials found');
+      return null;
+    } catch (error: any) {
+      console.error('❌ Biometric authentication failed:', error);
+      
+      // Handle specific biometric errors
+      if (error.message?.includes('BIOMETRY_NOT_ENROLLED')) {
+        throw new Error('BIOMETRY_NOT_ENROLLED');
+      }
+      
+      if (error.message?.includes('BIOMETRY_LOCKOUT')) {
+        throw new Error('BIOMETRY_LOCKOUT');
+      }
+      
+      if (error.message?.includes('USER_CANCEL') || error.message?.includes('AUTHENTICATION_CANCELED')) {
+        throw new Error('AUTHENTICATION_CANCELED');
+      }
+      
+      throw error;
+    }
+  }
+
+  // Simple biometric prompt (for transactions)
+  async simplePrompt(
+    promptMessage: string = 'Authenticate to continue',
+    fallbackToPasscode: boolean = true
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔐 Starting biometric prompt...');
+      
+      const result = await LocalAuthentication.authenticate({
+        promptMessage,
+        fallbackToPasscode,
+        cancelLabel: 'Cancel',
+        disableDeviceFallback: false,
+      });
+      
+      console.log('🔐 Biometric prompt result:', result);
+      
+      if (result.success) {
+        return { success: true };
+      } else {
+        return { 
+          success: false, 
+          error: result.error || 'Authentication failed' 
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ Biometric prompt error:', error);
+      return { 
+        success: false, 
+        error: error.message 
+      };
+    }
+  }
+
+  // Check if biometric credentials exist
+  async hasBiometricCredentials(): Promise<boolean> {
+    try {
+      const credentials = await this.getCredentialsWithBiometric();
+      return credentials !== null;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Delete biometric credentials
+  async deleteBiometricCredentials(): Promise<boolean> {
+    try {
+      console.log('🔐 Deleting biometric credentials...');
+      const result = await Keychain.resetGenericPassword({
+        service: KeychainServices.BIOMETRIC_CREDENTIALS,
+      });
+      
+      console.log('✅ Biometric credentials deleted');
+      return result;
+    } catch (error) {
+      console.error('❌ Error deleting biometric credentials:', error);
+      throw error;
+    }
+  }
+
+  // === EXISTING METHODS ===
+  
   async saveAuthToken(token: string): Promise<boolean> {
     try {
       console.log('🔐 Saving auth token to Keychain...');
@@ -35,7 +211,6 @@ class KeychainService {
     }
   }
 
-  // Get authentication token
   async getAuthToken(): Promise<string | null> {
     try {
       console.log('🔐 Retrieving auth token from Keychain...');
@@ -64,7 +239,6 @@ class KeychainService {
     }
   }
 
-  // Delete authentication token
   async deleteAuthToken(): Promise<boolean> {
     try {
       console.log('🔐 Deleting auth token from Keychain...');
@@ -151,9 +325,10 @@ class KeychainService {
     try {
       console.log('🧹 Cleaning all secure data from Keychain...');
       
-      await Promise.all([
+      await Promise.allSettled([
         this.deleteAuthToken(),
         this.deleteApiKey(),
+        this.deleteBiometricCredentials(),
       ]);
       
       console.log('✅ All secure data cleaned from Keychain');
@@ -162,6 +337,6 @@ class KeychainService {
       throw error;
     }
   }
-}
+} 
 
 export default new KeychainService();

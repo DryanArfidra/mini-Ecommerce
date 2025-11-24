@@ -24,6 +24,7 @@ interface AuthContextType {
   preferences: AppPreferences;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  forceLogout: (reason?: string) => Promise<void>; // NEW: Force logout for security
   completeOnboarding: () => void;
   isLoading: boolean;
   updatePreferences: (newPreferences: Partial<AppPreferences>) => Promise<void>;
@@ -175,6 +176,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setPreferences(defaultPreferences);
     } catch (cleanupError) {
       console.error('❌ Error during security breach cleanup:', cleanupError);
+    }
+  };
+
+  // NEW: Force logout for security incidents
+  const forceLogout = async (reason: string = 'Security incident detected'): Promise<void> => {
+    try {
+      console.log('🚨 FORCE LOGOUT:', reason);
+      
+      // Clean all secure data FIRST (most important)
+      await KeychainService.cleanAllSecureData();
+      
+      // Then clean non-sensitive data
+      const keysToRemove = [
+        STORAGE_KEYS.USER_DATA,
+        STORAGE_KEYS.THEME,
+        STORAGE_KEYS.NOTIFICATION,
+        STORAGE_KEYS.LANGUAGE,
+      ];
+      await AsyncStorage.multiRemove(keysToRemove);
+      
+      console.log('✅ All data removed during force logout');
+      
+      // Reset state
+      setUser(null);
+      setIsAuthenticated(false);
+      
+      // Show security alert
+      Alert.alert(
+        'Keamanan Diperlukan',
+        `Untuk keamanan akun Anda, kami telah melakukan logout otomatis. Alasan: ${reason}`,
+        [{ text: 'Mengerti' }]
+      );
+      
+    } catch (error) {
+      console.error('❌ Error during force logout:', error);
+      
+      // Even if storage cleanup fails, reset state
+      setUser(null);
+      setIsAuthenticated(false);
+      throw error;
     }
   };
 
@@ -331,6 +372,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       preferences,
       login,
       logout,
+      forceLogout, // NEW: Include forceLogout in context
       completeOnboarding,
       isLoading,
       updatePreferences,

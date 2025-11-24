@@ -1,4 +1,3 @@
-// src/screens/CheckoutScreen.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -15,6 +14,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProductStackParamList } from '../navigation/ProductStackNavigator';
 import { apiMethods } from '../services/apiClient';
+import KeychainService from '../services/KeychainService';
 
 type CheckoutScreenRouteProp = RouteProp<ProductStackParamList, 'Checkout'>;
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<ProductStackParamList, 'Checkout'>;
@@ -54,6 +54,21 @@ const CheckoutScreen: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+
+  // Check biometric availability on component mount
+  React.useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    try {
+      const sensorInfo = await KeychainService.isSensorAvailable();
+      setBiometricAvailable(sensorInfo.available);
+    } catch (error) {
+      console.error('❌ Error checking biometric availability:', error);
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -109,29 +124,26 @@ const CheckoutScreen: React.FC = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-
+  // Process payment after biometric confirmation
+  const processPayment = async () => {
     try {
-      console.log('🟡 Submitting checkout form...');
+      console.log('💳 Processing payment...');
       
       // Simulate API call to checkout endpoint
       const response = await apiMethods.post('/carts/add', {
         productId: parseInt(productId),
         quantity: 1,
         customerInfo: form,
+        paymentStatus: 'completed',
+        amount: 500000,
       });
 
-      console.log('🟢 Checkout successful');
+      console.log('🟢 Payment successful');
       setSubmitted(true);
       
       Alert.alert(
-        'Order Berhasil',
-        'Pesanan Anda berhasil dikonfirmasi! Kami akan mengirimkan detail pesanan ke email Anda.',
+        'Pembayaran Berhasil',
+        'Transfer Rp 500.000 berhasil diproses! Pesanan Anda sedang dikonfirmasi.',
         [
           {
             text: 'OK',
@@ -141,7 +153,7 @@ const CheckoutScreen: React.FC = () => {
       );
 
     } catch (err: any) {
-      console.error('🔴 Checkout failed:', err.response?.data);
+      console.error('🔴 Payment failed:', err.response?.data);
       
       // Handle 400 Bad Request with field-specific errors
       if (err.response?.status === 400) {
@@ -153,11 +165,138 @@ const CheckoutScreen: React.FC = () => {
       }
 
       Alert.alert(
-        'Checkout Gagal',
-        err.userMessage || 'Terjadi kesalahan saat memproses pesanan. Silakan coba lagi.'
+        'Pembayaran Gagal',
+        err.userMessage || 'Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi.'
       );
+    }
+  };
+
+  // Handle transaction confirmation with biometric
+  const handleTransactionConfirmation = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      console.log('🔐 Starting transaction confirmation...');
+
+      if (biometricAvailable) {
+        // Use biometric confirmation for transaction
+        const result = await KeychainService.simplePrompt(
+          'Konfirmasi Transfer Rp 500.000'
+        );
+
+        if (result.success) {
+          console.log('✅ Biometric confirmation successful, processing payment...');
+          await processPayment();
+        } else {
+          console.log('❌ Biometric confirmation failed or canceled:', result.error);
+          Alert.alert(
+            'Transaksi Dibatalkan',
+            'Konfirmasi biometrik gagal atau dibatalkan. Transaksi tidak diproses.',
+            [{ text: 'OK' }]
+          );
+        }
+      } else {
+        // Fallback to manual confirmation if biometric not available
+        Alert.alert(
+          'Konfirmasi Transfer',
+          'Anda akan mentransfer Rp 500.000. Lanjutkan?',
+          [
+            {
+              text: 'Batal',
+              style: 'cancel',
+              onPress: () => {
+                console.log('❌ Transaction canceled by user');
+                Alert.alert('Transaksi Dibatalkan', 'Transfer Rp 500.000 dibatalkan.');
+              }
+            },
+            {
+              text: 'Lanjutkan',
+              onPress: async () => {
+                console.log('✅ Manual confirmation successful, processing payment...');
+                await processPayment();
+              }
+            }
+          ]
+        );
+      }
+
+    } catch (error: any) {
+      console.error('❌ Transaction confirmation error:', error);
+      
+      // Handle specific biometric errors
+      if (error.message?.includes('BIOMETRY_NOT_ENROLLED')) {
+        Alert.alert(
+          'Biometrik Belum Didaftarkan',
+          'Sidik jari/wajah belum diatur di perangkat ini. Silakan atur di Settings atau gunakan konfirmasi manual.',
+          [
+            { text: 'OK', style: 'default' },
+            { 
+              text: 'Konfirmasi Manual', 
+              onPress: async () => {
+                // Fallback to manual confirmation
+                Alert.alert(
+                  'Konfirmasi Manual',
+                  'Anda akan mentransfer Rp 500.000. Lanjutkan?',
+                  [
+                    {
+                      text: 'Batal',
+                      style: 'cancel',
+                    },
+                    {
+                      text: 'Lanjutkan',
+                      onPress: async () => {
+                        await processPayment();
+                      }
+                    }
+                  ]
+                );
+              }
+            },
+          ]
+        );
+      } else if (error.message?.includes('BIOMETRY_LOCKOUT')) {
+        // Force security cleanup for lockout
+        await handleSecurityLockout();
+      } else {
+        Alert.alert(
+          'Error Konfirmasi',
+          'Terjadi kesalahan saat konfirmasi. Silakan coba lagi.'
+        );
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSecurityLockout = async () => {
+    try {
+      console.log('🚨 Security lockout detected during transaction, cleaning secure data...');
+      
+      // Clean all secure data due to security breach
+      await KeychainService.cleanAllSecureData();
+      
+      Alert.alert(
+        'Keamanan Diperlukan',
+        'Terlalu banyak percobaan gagal. Untuk keamanan, data login telah direset. Silakan login ulang.',
+        [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              // Navigate to login screen
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' as never }],
+              });
+            }
+          },
+        ]
+      );
+    } catch (cleanupError) {
+      console.error('❌ Error during security lockout cleanup:', cleanupError);
     }
   };
 
@@ -203,6 +342,16 @@ const CheckoutScreen: React.FC = () => {
         <View style={styles.header}>
           <Text style={styles.title}>Checkout</Text>
           <Text style={styles.subtitle}>Lengkapi informasi pengiriman</Text>
+          
+          {/* Transaction Info */}
+          <View style={styles.transactionInfo}>
+            <Text style={styles.transactionAmount}>Total: Rp 500.000</Text>
+            <Text style={styles.transactionNote}>
+              {biometricAvailable 
+                ? 'Konfirmasi dengan biometrik diperlukan' 
+                : 'Konfirmasi manual diperlukan'}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.form}>
@@ -251,16 +400,25 @@ const CheckoutScreen: React.FC = () => {
             keyboardType="phone-pad"
           />
 
+          {/* Biometric Info */}
+          {biometricAvailable && (
+            <View style={styles.biometricInfo}>
+              <Text style={styles.biometricInfoText}>
+                🔒 Transaksi akan dikonfirmasi dengan biometrik
+              </Text>
+            </View>
+          )}
+
           <TouchableOpacity 
             style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
+            onPress={handleTransactionConfirmation}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
               <Text style={styles.submitButtonText}>
-                Konfirmasi Pesanan
+                Konfirmasi & Bayar Rp 500.000
               </Text>
             )}
           </TouchableOpacity>
@@ -301,6 +459,24 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#666',
+    marginBottom: 12,
+  },
+  transactionInfo: {
+    backgroundColor: '#FFF3E0',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  transactionAmount: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#E65100',
+    marginBottom: 4,
+  },
+  transactionNote: {
+    fontSize: 14,
+    color: '#FF9800',
   },
   form: {
     padding: 20,
@@ -340,6 +516,19 @@ const styles = StyleSheet.create({
   },
   halfInput: {
     width: '48%',
+  },
+  biometricInfo: {
+    backgroundColor: '#E8F5E8',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  biometricInfoText: {
+    fontSize: 14,
+    color: '#2E7D32',
+    textAlign: 'center',
   },
   submitButton: {
     backgroundColor: '#4CAF50',

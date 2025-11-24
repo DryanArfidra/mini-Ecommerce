@@ -17,6 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuth } from '../context/AuthContext';
 import { useDeepLinking } from '../utils/deepLinkingUtils';
+import KeychainService from '../services/KeychainService';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 type LoginScreenRouteProp = RouteProp<RootStackParamList, 'Login'>;
@@ -27,12 +28,44 @@ const LoginScreen: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  const [biometryType, setBiometryType] = useState<string>('');
+  const [hasBiometricCredentials, setHasBiometricCredentials] = useState(false);
   const { login } = useAuth();
   const { executePendingAction } = useDeepLinking();
 
+  // Check biometric availability on component mount
+  useEffect(() => {
+    checkBiometricAvailability();
+    checkExistingBiometricCredentials();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    try {
+      const sensorInfo = await KeychainService.isSensorAvailable();
+      console.log('🔍 Biometric sensor info:', sensorInfo);
+      
+      if (sensorInfo.available) {
+        setBiometryType(sensorInfo.biometryType || 'Biometrics');
+      } else {
+        console.log('ℹ️ Biometric not available:', sensorInfo.error);
+      }
+    } catch (error) {
+      console.error('❌ Error checking biometric availability:', error);
+    }
+  };
+
+  const checkExistingBiometricCredentials = async () => {
+    try {
+      const hasCredentials = await KeychainService.hasBiometricCredentials();
+      setHasBiometricCredentials(hasCredentials);
+    } catch (error) {
+      console.error('❌ Error checking biometric credentials:', error);
+    }
+  };
+
   // Handle callback setelah login sukses
   useEffect(() => {
-    // Jika ada callback parameter, kita akan handle setelah login sukses
     if (route.params?.callback) {
       console.log('🔗 Login with callback:', route.params.callback);
     }
@@ -53,6 +86,20 @@ const LoginScreen: React.FC = () => {
       
       if (success) {
         console.log('✅ Login successful!');
+        
+        // Save credentials for biometric login (hybrid approach)
+        try {
+          await KeychainService.saveCredentialsWithBiometric(username, password);
+          setHasBiometricCredentials(true);
+          console.log('✅ Biometric credentials saved for future login');
+        } catch (biometricError: any) {
+          // Handle biometric errors gracefully - don't block login
+          if (biometricError.message?.includes('BIOMETRY_NOT_ENROLLED')) {
+            console.log('ℹ️ User not enrolled in biometrics, skipping biometric setup');
+          } else {
+            console.warn('⚠️ Could not save biometric credentials:', biometricError.message);
+          }
+        }
         
         // Cek apakah ada pending deep link action
         const hadPendingAction = await executePendingAction();
@@ -79,9 +126,126 @@ const LoginScreen: React.FC = () => {
     }
   };
 
+  const handleQuickLogin = async () => {
+    setBiometricLoading(true);
+    
+    try {
+      console.log('🔐 Attempting quick login with biometric...');
+      
+      // Get biometric prompt message based on biometry type
+      let promptMessage = 'Tempelkan Jari untuk Masuk';
+      if (biometryType === 'FaceID') {
+        promptMessage = 'Pindai Wajah untuk Masuk';
+      } else if (biometryType === 'TouchID') {
+        promptMessage = 'Tempelkan Jari untuk Masuk';
+      }
+      
+      // Get credentials using biometric
+      const credentials = await KeychainService.getCredentialsWithBiometric(promptMessage);
+      
+      if (credentials) {
+        console.log('✅ Biometric authentication successful, proceeding with login...');
+        
+        // Use the retrieved credentials to login
+        const success = await login(credentials.username, credentials.password);
+        
+        if (success) {
+          console.log('✅ Quick login successful!');
+          
+          // Handle pending actions
+          const hadPendingAction = await executePendingAction();
+          
+          if (!hadPendingAction && route.params?.callback) {
+            const { handleDeepLink } = useDeepLinking();
+            handleDeepLink(route.params.callback);
+          }
+          
+          if (!hadPendingAction && !route.params?.callback) {
+            Alert.alert('Success', 'Quick login successful!');
+          }
+        } else {
+          Alert.alert('Error', 'Quick login failed. Please try manual login.');
+          // Remove invalid biometric credentials
+          await KeychainService.deleteBiometricCredentials();
+          setHasBiometricCredentials(false);
+        }
+      } else {
+        Alert.alert('Biometric Login Failed', 'No biometric credentials found. Please login manually first.');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Quick login failed:', error.message);
+      
+      // Handle specific biometric errors
+      if (error.message === 'BIOMETRY_NOT_ENROLLED') {
+        Alert.alert(
+          'Biometric Not Set Up',
+          'Sidik jari/wajah belum diatur di HP ini. Silakan atur di Settings atau gunakan login manual.',
+          [
+            { text: 'OK', style: 'default' },
+            { text: 'Settings', onPress: () => {
+              // Arahkan ke settings untuk setup biometric
+              // Platform-specific implementation
+            }},
+          ]
+        );
+      } else if (error.message === 'BIOMETRY_LOCKOUT') {
+        // Force logout due to security breach
+        Alert.alert(
+          'Security Lockout',
+          'Terlalu banyak percobaan gagal. Untuk keamanan, semua data login akan dihapus. Silakan login ulang.',
+          [
+            { 
+              text: 'OK', 
+              onPress: async () => {
+                await handleSecurityLockout();
+              }
+            },
+          ]
+        );
+      } else if (error.message === 'AUTHENTICATION_CANCELED') {
+        // User canceled, no action needed
+        console.log('ℹ️ Biometric authentication canceled by user');
+      } else {
+        Alert.alert('Biometric Error', error.message || 'Authentication failed. Please try manual login.');
+      }
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
+
+  const handleSecurityLockout = async () => {
+    try {
+      console.log('🚨 Security lockout detected, cleaning all secure data...');
+      
+      // Clean all secure data
+      await KeychainService.cleanAllSecureData();
+      
+      // Reset state
+      setHasBiometricCredentials(false);
+      
+      Alert.alert(
+        'Security Reset',
+        'Data keamanan telah direset. Silakan login ulang dengan username dan password.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('❌ Error during security lockout cleanup:', error);
+    }
+  };
+
   const handleDemoLogin = () => {
     setUsername('kminchelle');
     setPassword('0lelplR');
+  };
+
+  const getBiometricButtonText = () => {
+    if (biometricLoading) return 'Authenticating...';
+    
+    if (biometryType === 'FaceID') return 'Login dengan Face ID';
+    if (biometryType === 'TouchID') return 'Login dengan Touch ID';
+    
+    return 'Login Cepat dengan Biometrik';
   };
 
   return (
@@ -129,6 +293,24 @@ const LoginScreen: React.FC = () => {
               )}
             </TouchableOpacity>
 
+            {/* Quick Login Button */}
+            {hasBiometricCredentials && (
+              <TouchableOpacity 
+                style={[styles.quickLoginButton, biometricLoading && styles.disabledButton]}
+                onPress={handleQuickLogin}
+                disabled={biometricLoading}
+              >
+                {biometricLoading ? (
+                  <ActivityIndicator color="#2196F3" />
+                ) : (
+                  <>
+                    <Text style={styles.quickLoginButtonText}>{getBiometricButtonText()}</Text>
+                    <Text style={styles.quickLoginSubtext}>Gunakan biometrik untuk login cepat</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity 
               style={styles.demoButton}
               onPress={handleDemoLogin}
@@ -150,7 +332,7 @@ const LoginScreen: React.FC = () => {
   );
 };
 
-// Styles tetap sama...
+// UPDATE Styles untuk tambah quick login button
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -217,6 +399,25 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  quickLoginButton: {
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#2196F3',
+    backgroundColor: '#E3F2FD',
+    marginBottom: 12,
+  },
+  quickLoginButtonText: {
+    color: '#2196F3',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  quickLoginSubtext: {
+    color: '#2196F3',
+    fontSize: 12,
+    marginTop: 4,
   },
   demoButton: {
     padding: 12,
