@@ -15,14 +15,17 @@ const apiClient = axios.create({
 const CACHE_KEYS = {
   CATEGORIES: 'categories_cache',
   CATEGORIES_TIMESTAMP: 'categories_timestamp',
+  LOCATION: 'location_cache',
+  LOCATION_TIMESTAMP: 'location_timestamp',
 };
 
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const LOCATION_CACHE_TTL = 2 * 60 * 1000; // 2 minutes untuk cache lokasi
 
 // Cache utility functions
 const cacheUtils = {
-  isCacheValid: (timestamp: number): boolean => {
-    return Date.now() - timestamp < CACHE_TTL;
+  isCacheValid: (timestamp: number, ttl: number = CACHE_TTL): boolean => {
+    return Date.now() - timestamp < ttl;
   },
 
   getCachedCategories: async (): Promise<any[] | null> => {
@@ -32,9 +35,8 @@ const cacheUtils = {
         CACHE_KEYS.CATEGORIES_TIMESTAMP
       ]);
 
-      // FIXED: Correct array indices - [0] untuk CATEGORIES, [1] untuk TIMESTAMP
-      const categoriesJson = cachedData[0]?.[1]; // [0][1] berarti item pertama, value
-      const timestampValue = timestamp[1]?.[1]; // [1][1] berarti item kedua, value
+      const categoriesJson = cachedData[0]?.[1];
+      const timestampValue = timestamp[1]?.[1];
 
       if (categoriesJson && timestampValue) {
         const cacheTime = parseInt(timestampValue);
@@ -73,7 +75,45 @@ const cacheUtils = {
     } catch (error) {
       console.error('❌ Error clearing categories cache:', error);
     }
-  }
+  },
+
+  // Cache untuk lokasi
+  getCachedLocation: async (): Promise<any | null> => {
+    try {
+      const [cachedData, timestamp] = await AsyncStorage.multiGet([
+        CACHE_KEYS.LOCATION,
+        CACHE_KEYS.LOCATION_TIMESTAMP
+      ]);
+
+      const locationJson = cachedData[0]?.[1];
+      const timestampValue = timestamp[1]?.[1];
+
+      if (locationJson && timestampValue) {
+        const cacheTime = parseInt(timestampValue);
+        if (cacheUtils.isCacheValid(cacheTime, LOCATION_CACHE_TTL)) {
+          console.log('📍 Using cached location (valid)');
+          return JSON.parse(locationJson);
+        } else {
+          console.log('🕒 Location cache expired');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error reading location cache:', error);
+    }
+    return null;
+  },
+
+  setCachedLocation: async (location: any): Promise<void> => {
+    try {
+      await AsyncStorage.multiSet([
+        [CACHE_KEYS.LOCATION, JSON.stringify(location)],
+        [CACHE_KEYS.LOCATION_TIMESTAMP, Date.now().toString()]
+      ]);
+      console.log('💾 Location cached successfully');
+    } catch (error) {
+      console.error('❌ Error caching location:', error);
+    }
+  },
 };
 
 // Initialize API Key on app start
@@ -279,7 +319,7 @@ export const apiMethods = {
       console.log('🌐 Fetching categories from API');
       const response = await apiClient.get(`/products/category/${category}`);
       
-      // Cache the categories - FIXED: Handle different response formats
+      // Cache the categories
       let productsToCache: any[] = [];
       if (response.data && response.data.products) {
         productsToCache = response.data.products;
@@ -364,6 +404,191 @@ export const apiMethods = {
   // Upload KTP khusus
   uploadKTP: async (formData: FormData) => {
     return apiMethods.uploadFile(formData);
+  },
+
+  /**
+   * 4. Integrasi Networking Hemat Data
+   * Kirim lokasi user ke server untuk analitik
+   * Menggunakan maximumAge: 120000 (2 menit) di LocationService
+   * Ini membantu mengurangi beban server dan baterai dengan tidak 
+   * mengambil data GPS baru jika data lama masih segar (di bawah 2 menit)
+   */
+  sendLocationAnalytics: async (locationData: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+    timestamp: number;
+  }) => {
+    try {
+      // Cek cache lokasi terlebih dahulu untuk menghindari spam
+      const cachedLocation = await cacheUtils.getCachedLocation();
+      if (cachedLocation && 
+          cachedLocation.latitude === locationData.latitude && 
+          cachedLocation.longitude === locationData.longitude) {
+        console.log('📍 Lokasi sama dengan cache, skip pengiriman');
+        return { data: { success: true, cached: true } };
+      }
+
+      // Simpan ke cache
+      await cacheUtils.setCachedLocation(locationData);
+
+      const response = await apiClient.post('/analytics/location', {
+        ...locationData,
+        deviceId: 'react-native-ecommerce-app',
+        sessionId: Date.now().toString(),
+        source: 'location_tracking',
+      });
+
+      console.log('📍 Lokasi analitik terkirim ke server');
+      return response;
+    } catch (error) {
+      console.warn('⚠️ Gagal mengirim lokasi analitik:', error);
+      // Jangan throw error untuk analitik, karena tidak kritis
+      return { data: { success: false, error: 'Failed to send analytics' } };
+    }
+  },
+
+  // Method untuk menghitung ongkir berdasarkan lokasi
+  calculateShippingCost: async (userLocation: {
+    latitude: number;
+    longitude: number;
+  }, storeLocation: {
+    latitude: number;
+    longitude: number;
+  }) => {
+    try {
+      const response = await apiClient.post('/shipping/calculate', {
+        userLocation,
+        storeLocation,
+        calculationTime: new Date().toISOString(),
+        serviceType: 'regular',
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error calculating shipping cost:', error);
+      
+      // Fallback untuk demo
+      const distance = Math.sqrt(
+        Math.pow(userLocation.latitude - storeLocation.latitude, 2) +
+        Math.pow(userLocation.longitude - storeLocation.longitude, 2)
+      ) * 111; // Convert ke km
+
+      const cost = Math.max(10000, Math.min(50000, distance * 2000));
+      
+      return {
+        data: {
+          success: true,
+          cost: Math.round(cost),
+          estimatedTime: '1-2 hari',
+          distance: distance.toFixed(1) + ' km',
+          note: 'Demo calculation'
+        }
+      };
+    }
+  },
+
+  // Method untuk mendapatkan toko terdekat
+  getNearbyStores: async (userLocation: {
+    latitude: number;
+    longitude: number;
+  }, radius: number = 5000) => {
+    try {
+      const response = await apiClient.get('/stores/nearby', {
+        params: {
+          lat: userLocation.latitude,
+          lon: userLocation.longitude,
+          radius,
+          limit: 20,
+        },
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error getting nearby stores:', error);
+      
+      // Fallback data untuk demo
+      const mockStores = [
+        {
+          id: '1',
+          name: 'Toko Utama Monas',
+          address: 'Jl. Merdeka No. 123, Jakarta',
+          distance: 1.2,
+          latitude: -6.1754,
+          longitude: 106.8272,
+          isOpen: true,
+          rating: 4.5,
+        },
+        {
+          id: '2',
+          name: 'Toko Cabang Senayan',
+          address: 'Jl. Senayan Raya No. 45, Jakarta',
+          distance: 3.5,
+          latitude: -6.2275,
+          longitude: 106.8004,
+          isOpen: true,
+          rating: 4.2,
+        },
+      ];
+
+      return {
+        data: mockStores,
+        success: true,
+        message: 'Demo stores data'
+      };
+    }
+  },
+
+  // Method untuk tracking kurir
+  updateCourierLocation: async (courierId: string, location: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+  }) => {
+    try {
+      const response = await apiClient.post(`/couriers/${courierId}/location`, {
+        ...location,
+        timestamp: new Date().toISOString(),
+        batteryLevel: 85, // Contoh data tambahan
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error updating courier location:', error);
+      throw error;
+    }
+  },
+
+  // Method untuk geofencing promo
+  checkStoreProximity: async (userLocation: {
+    latitude: number;
+    longitude: number;
+  }, storeId: string) => {
+    try {
+      const response = await apiClient.post('/promotions/check-proximity', {
+        userLocation,
+        storeId,
+        maxDistance: 100, // 100 meter
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error checking store proximity:', error);
+      
+      // Fallback untuk demo
+      return {
+        data: {
+          inRange: true,
+          distance: 75.5,
+          promotion: {
+            id: 'promo1',
+            title: 'Diskon Spesial 20%',
+            description: 'Khusus pengunjung di sekitar toko',
+            validUntil: '2024-12-31'
+          }
+        }
+      };
+    }
   },
 
   // Cache management methods

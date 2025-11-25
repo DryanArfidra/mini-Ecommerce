@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
       android:name=".MainApplication"
@@ -36,7 +38,7 @@
         <!-- Universal Links (ganti dengan domain Anda) -->
         <intent-filter android:autoVerify="true">
             <action android:name="android.intent.action.VIEW" />
-            <category android:name="android.intent.category.DEFAULT" />
+            category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="https" android:host="yourapp.com" />
         </intent-filter>
